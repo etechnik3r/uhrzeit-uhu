@@ -4,77 +4,79 @@
    Hier wird ausschliesslich das AUSSEHEN definiert. Die Logik steckt in game.js,
    die Struktur in index.html.
 
-   Aufbau dieser Datei:
-     1. Design-Variablen (Farben, Groessen)  -> leicht zentral anpassbar
-     2. Grund-Layout (3-geteilt: oben / mitte / unten)
+   WICHTIG (mobil-first): Das Layout ist fuer Handys im Hochformat ausgelegt und
+   wird auf grossen Bildschirmen (Tablet quer / Desktop) zweispaltig erweitert.
+
+   Aufbau:
+     1. Design-Variablen
+     2. Grund-Layout (3 Zonen)
      3. Top-Bar
-     4. Main-Area: Fahrplan + Uhr
-     5. Bottom-Area: Steuerungs-Buttons
-     6. Animationen (Erfolg, Fehler, Zug-Abfahrt)
-     7. Responsives Verhalten (Tablet hochkant / kleine Bildschirme)
+     4. Main-Area: Fahrplan + Uhr (inkl. korrekt drehender Zeiger)
+     5. Bottom-Area: getrennte Stunden-/Minuten-Steller + Abfahrt-Button
+     6. Animationen
+     7. Responsives Verhalten (Handy hochkant, Tablet/Desktop, Touch-Geraete)
    =========================================================================== */
 
 
 /* ---------------------------------------------------------------------------
-   1) DESIGN-VARIABLEN
-   CSS-Custom-Properties (Variablen) buendeln alle Farben und Kerngroessen an
-   einer Stelle. Wer die Farbgebung aendern moechte, passt nur hier etwas an.
+   1) DESIGN-VARIABLEN  (zentral anpassbar)
    --------------------------------------------------------------------------- */
 :root {
-  /* Freundliche, kontrastreiche Farbpalette */
-  --farbe-himmel:      #2a6fdb;   /* kraeftiges, warmes Blau (Hintergrund)   */
-  --farbe-himmel-hell: #5b9bf0;   /* hellerer Blauton fuer Verlaeufe         */
-  --farbe-sonne:       #ffd23f;   /* warmes Gelb (Akzente, Marke)            */
-  --farbe-erfolg:      #2ecc71;   /* klares Gruen (richtige Antwort)         */
-  --farbe-erfolg-dkl:  #239a55;   /* dunkleres Gruen (Button-Tiefe)          */
-  --farbe-hinweis:     #ff8c42;   /* sanftes Orange (freundlicher Hinweis)   */
-  --farbe-karte:       #ffffff;   /* Weiss fuer Karten/Flaechen              */
-  --farbe-text:        #1f2d3d;   /* dunkles Blaugrau fuer guten Kontrast    */
-  --farbe-text-hell:   #ffffff;   /* heller Text auf dunklem Grund           */
-  --farbe-schiene:     #6b7a8f;   /* graublau fuer Linien/Markierungen       */
+  --farbe-himmel:      #2a6fdb;
+  --farbe-himmel-hell: #5b9bf0;
+  --farbe-sonne:       #ffd23f;
+  --farbe-erfolg:      #2ecc71;
+  --farbe-erfolg-dkl:  #239a55;
+  --farbe-hinweis:     #ff8c42;
+  --farbe-karte:       #ffffff;
+  --farbe-text:        #1f2d3d;
+  --farbe-text-hell:   #ffffff;
+  --farbe-schiene:     #6b7a8f;
 
-  /* Groessen */
-  --radius:      18px;            /* einheitliche Eck-Rundung                 */
-  --tap-min:     64px;            /* Mindesthoehe fuer Tap-Targets (Tablet)   */
-  --schatten:    0 6px 16px rgba(0, 0, 0, 0.18);
+  --radius:   18px;
+  --tap-min:  60px;            /* Mindestgroesse fuer Tap-Targets             */
+  --schatten: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 
 /* ---------------------------------------------------------------------------
    2) GRUND-LAYOUT
-   Der Body ist ein vertikales Flex-Layout mit drei Bereichen:
-   Top-Bar (oben), Haupt-Bereich (waechst und fuellt den Platz), Steuerung (unten).
    --------------------------------------------------------------------------- */
 * {
-  /* box-sizing: border-box sorgt dafuer, dass Padding/Border NICHT zur
-     angegebenen Breite addiert werden -> Layout-Berechnung wird einfacher. */
   box-sizing: border-box;
   margin: 0;
   padding: 0;
 }
 
-html, body {
+html {
   height: 100%;
+  /* Verhindert automatisches Vergroessern von Text auf Mobilgeraeten */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 body {
   font-family: "Comic Sans MS", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   color: var(--farbe-text);
 
-  /* Sanfter Himmelsverlauf als Hintergrund */
   background: linear-gradient(160deg, var(--farbe-himmel) 0%, var(--farbe-himmel-hell) 100%);
   background-attachment: fixed;
 
-  /* Drei-Zonen-Aufbau untereinander */
   display: flex;
   flex-direction: column;
+  /* 100dvh = "dynamic viewport height": beruecksichtigt ein-/ausblendende
+     Browser-Leisten auf dem Handy, damit nichts abgeschnitten wird.
+     min-height (statt height) erlaubt Scrollen, falls der Inhalt doch hoeher ist. */
   min-height: 100vh;
+  min-height: 100dvh;
 
-  /* Verhindert Text-Markierung beim schnellen Tippen (kindgerecht) */
   -webkit-user-select: none;
   user-select: none;
-  /* Entfernt den blauen Highlight-Blitz beim Tippen auf Touch-Geraeten */
   -webkit-tap-highlight-color: transparent;
+
+  /* Sicherheitsabstand zu Notch/Home-Indikator (iPhone & Co.) */
+  padding: env(safe-area-inset-top) env(safe-area-inset-right)
+           env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 
@@ -86,8 +88,8 @@ body {
   align-items: center;
   justify-content: space-between;
   flex-wrap: wrap;
-  gap: 12px;
-  padding: 12px 20px;
+  gap: 10px;
+  padding: 10px 16px;
   background: rgba(0, 0, 0, 0.18);
   color: var(--farbe-text-hell);
 }
@@ -96,47 +98,34 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 1.6rem;
+  font-size: 1.5rem;
   font-weight: bold;
 }
-.marke-emoji { font-size: 2rem; }
+.marke-emoji { font-size: 1.9rem; }
 .marke-text  { color: var(--farbe-sonne); text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
 
-/* Statusfelder (Level / Punkte / Rekord) */
-.status {
-  display: flex;
-  gap: 10px;
-}
+.status { display: flex; gap: 8px; }
 .status-feld {
   background: rgba(255, 255, 255, 0.15);
   border-radius: var(--radius);
-  padding: 6px 16px;
+  padding: 5px 14px;
   text-align: center;
-  min-width: 70px;
+  min-width: 62px;
 }
 .status-label {
   display: block;
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
   opacity: 0.85;
 }
-.status-wert {
-  display: block;
-  font-size: 1.5rem;
-  font-weight: bold;
-}
+.status-wert { display: block; font-size: 1.4rem; font-weight: bold; }
 
-/* Level-Auswahl-Buttons */
-.level-auswahl {
-  display: flex;
-  gap: 8px;
-}
+.level-auswahl { display: flex; gap: 6px; }
 .level-button {
   min-height: 44px;
-  padding: 8px 16px;
-  font-size: 1rem;
-  font-weight: bold;
+  padding: 6px 14px;
+  font: bold 0.95rem inherit;
   font-family: inherit;
   color: var(--farbe-text);
   background: var(--farbe-karte);
@@ -146,81 +135,66 @@ body {
   transition: transform 0.1s ease, border-color 0.15s ease;
 }
 .level-button:active { transform: scale(0.95); }
-/* Das aktive Level wird durch die Klasse "aktiv" (per JS gesetzt) hervorgehoben */
-.level-button.aktiv {
-  border-color: var(--farbe-sonne);
-  background: var(--farbe-sonne);
-}
+.level-button.aktiv  { border-color: var(--farbe-sonne); background: var(--farbe-sonne); }
 
 
 /* ---------------------------------------------------------------------------
-   4) MAIN-AREA: Fahrplan (links) + Uhr (rechts)
-   flex: 1 sorgt dafuer, dass dieser Bereich den verfuegbaren Platz fuellt.
+   4) MAIN-AREA: Fahrplan + Uhr
    --------------------------------------------------------------------------- */
 .haupt-bereich {
   flex: 1;
   display: flex;
+  flex-direction: column;     /* Handy hochkant: untereinander           */
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 28px;
-  padding: 24px;
+  gap: 16px;
+  padding: 16px;
 }
 
-/* ---- Fahrplan-Karte (links) ---- */
+/* ---- Fahrplan-Karte ---- */
 .fahrplan {
   background: var(--farbe-karte);
   border-radius: var(--radius);
   box-shadow: var(--schatten);
-  padding: 24px;
+  padding: 16px 20px;
   width: 340px;
   max-width: 100%;
   text-align: center;
 }
-.fahrplan-titel {
-  font-size: 1.6rem;
-  margin-bottom: 8px;
-}
-.auftrag {
-  font-size: 1.05rem;
-  color: var(--farbe-schiene);
-  margin-bottom: 18px;
-}
+.fahrplan-titel { font-size: 1.4rem; margin-bottom: 10px; }
 
-/* Die grosse digitale ZIELzeit */
 .ziel-anzeige {
   background: var(--farbe-text);
   color: var(--farbe-sonne);
   border-radius: var(--radius);
-  padding: 16px;
-  margin-bottom: 16px;
+  padding: 12px;
+  margin-bottom: 12px;
 }
 .ziel-label {
   display: block;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: #b9c4d0;
 }
 .ziel-zeit {
   display: block;
-  /* Monospace + Tabular-Ziffern: alle Zahlen gleich breit, ruhiges Bild.
-     "clamp" macht die Schrift responsiv: min 3rem, ideal 12vw, max 5.5rem. */
   font-family: "Courier New", monospace;
   font-variant-numeric: tabular-nums;
   font-weight: bold;
-  font-size: clamp(3rem, 12vw, 5.5rem);
+  /* clamp() macht die Schrift responsiv: nie kleiner als 2.8rem, ideal 11vw,
+     hoechstens 5rem. */
+  font-size: clamp(2.8rem, 11vw, 5rem);
   line-height: 1.1;
 }
 
-/* Vorlese-Button (Sprachausgabe) */
 .vorlese-button {
   min-height: 48px;
   width: 100%;
   padding: 10px;
-  font-size: 1.1rem;
+  font: bold 1.05rem inherit;
   font-family: inherit;
-  font-weight: bold;
   color: var(--farbe-text);
   background: var(--farbe-sonne);
   border: none;
@@ -230,83 +204,89 @@ body {
 }
 .vorlese-button:active { transform: scale(0.97); }
 
-/* Dekorative Szene (Uhu + Zug) */
 .szene {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
-  font-size: 2.4rem;
-  margin-top: 18px;
+  font-size: 2.2rem;
+  margin-top: 12px;
   overflow: hidden;
 }
 
-/* ---- Uhr-Bereich (rechts) ---- */
+/* ---- Uhr-Bereich ---- */
 .uhr-bereich {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 10px;
 }
 
 .uhr-svg {
-  /* Responsive Groesse: nie groesser als 380px, schrumpft auf kleinen Schirmen */
-  width: min(80vw, 380px);
-  height: min(80vw, 380px);
+  /* Responsive Groesse: passt sich an die Bildschirmbreite an. */
+  width: min(86vw, 360px);
+  height: min(86vw, 360px);
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.25));
-  /* touch-action: none ist WICHTIG fuer das Ziehen der Zeiger:
-     es verhindert, dass der Browser beim Wischen die Seite scrollt. */
+  /* touch-action: none ist ENTSCHEIDEND: verhindert, dass der Browser beim
+     Ziehen der Zeiger die Seite scrollt oder zoomt. */
   touch-action: none;
 }
 
-/* Die einzelnen SVG-Teile der Uhr */
 .uhr-rand  { fill: var(--farbe-sonne); }
 .uhr-blatt { fill: var(--farbe-karte); }
 .uhr-mitte { fill: var(--farbe-text); }
 
-/* Stunden-Markierungsstriche auf dem Zifferblatt */
-.markierung-strich {
-  stroke: var(--farbe-schiene);
-  stroke-width: 2;
-}
-.markierung-strich.voll {  /* die 4 Hauptmarken (3,6,9,12) dicker */
-  stroke: var(--farbe-text);
-  stroke-width: 4;
-}
-/* Die Stundenziffern 1-12 */
+.markierung-strich      { stroke: var(--farbe-schiene); stroke-width: 2; }
+.markierung-strich.voll { stroke: var(--farbe-text);    stroke-width: 4; }
 .markierung-zahl {
   fill: var(--farbe-text);
   font-family: inherit;
   font-weight: bold;
   font-size: 13px;
-  text-anchor: middle;          /* horizontal zentriert */
-  dominant-baseline: central;   /* vertikal zentriert   */
+  text-anchor: middle;
+  dominant-baseline: central;
 }
 
 /*
-  Die ZEIGER.
-  transform-origin: 100px 100px  -> beide Zeiger drehen sich exakt um den
-  Uhr-Mittelpunkt (entspricht der viewBox-Mitte). Die eigentliche Rotation
-  (rotate(...)) setzt JavaScript per inline-style.
-  Die Transition macht die Button-Schritte fluessig animiert.
+  DIE ZEIGER – korrekte Drehung um die Uhrmitte.
+
+  Wichtig fuer Touch-Geraete:
+  Wir drehen die Zeiger ueber die CSS-Eigenschaft "transform" (per JS gesetzt),
+  NICHT ueber das SVG-Attribut "transform". In Kombination mit:
+     transform-box: view-box;        -> Bezugssystem ist die viewBox (0..200)
+     transform-origin: 100px 100px;  -> Drehpunkt ist die Uhrmitte (100,100)
+  dreht sich jeder Zeiger sauber um den Mittelpunkt. Genau hier lag der frueher
+  beobachtete Fehler: Wird stattdessen das SVG-Attribut animiert, interpolieren
+  manche (vor allem mobile) Browser um die Ecke (0,0) – der Zeiger "fliegt" dann
+  quer durchs Bild. Diese Variante vermeidet das zuverlaessig.
 */
 .zeiger {
+  transform-box: view-box;
   transform-origin: 100px 100px;
-  stroke-linecap: round;        /* runde Zeiger-Enden, kindgerecht */
-  transition: transform 0.25s ease;
+  stroke-linecap: round;
+  transition: transform 0.2s ease;
 }
-.zeiger-stunde { stroke: var(--farbe-text);   stroke-width: 7; }
-.zeiger-minute { stroke: var(--farbe-himmel); stroke-width: 5; }
+.zeiger-stunde { stroke: var(--farbe-text);   stroke-width: 8; }
+.zeiger-minute { stroke: var(--farbe-himmel); stroke-width: 6; }
 
-/* Waehrend des Ziehens schalten wir die Transition ab (Klasse per JS),
-   damit der Zeiger dem Finger ohne Verzoegerung folgt. */
+/* Waehrend des Ziehens schalten wir die weiche Animation ab, damit der
+   aktive Zeiger dem Finger ohne Verzoegerung folgt. */
 .uhr-svg.wird-gezogen .zeiger { transition: none; }
 
-/* Der gerade aktiv gegriffene Zeiger wird leicht hervorgehoben */
-.zeiger.greifbar { cursor: grab; }
-.zeiger.aktiv-gezogen { cursor: grabbing; filter: brightness(1.15); }
+/* Der AKTIVE (gerade einstellbare) Zeiger wird hervorgehoben, damit das Kind
+   sieht, welcher Zeiger sich beim Ziehen bewegt. */
+.zeiger.aktiv {
+  stroke: var(--farbe-hinweis);
+  filter: drop-shadow(0 0 4px rgba(255, 140, 66, 0.8));
+}
 
-/* Digitale IST-Anzeige unter der Uhr */
+.zieh-hinweis {
+  color: var(--farbe-text-hell);
+  font-size: 0.95rem;
+  opacity: 0.9;
+  text-align: center;
+}
+
 .ist-anzeige {
   display: flex;
   align-items: baseline;
@@ -314,80 +294,108 @@ body {
   background: rgba(0, 0, 0, 0.22);
   color: var(--farbe-text-hell);
   border-radius: var(--radius);
-  padding: 8px 20px;
+  padding: 6px 18px;
 }
-.ist-label { font-size: 1rem; opacity: 0.9; }
+.ist-label { font-size: 0.95rem; opacity: 0.9; }
 .ist-zeit {
   font-family: "Courier New", monospace;
   font-variant-numeric: tabular-nums;
-  font-size: 2rem;
+  font-size: 1.9rem;
   font-weight: bold;
 }
 
 
 /* ---------------------------------------------------------------------------
-   5) BOTTOM-AREA: Steuerung
+   5) BOTTOM-AREA: getrennte Stunden-/Minuten-Steller + Abfahrt
    --------------------------------------------------------------------------- */
 .steuerung {
   background: rgba(0, 0, 0, 0.18);
-  padding: 16px 20px 24px;
+  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
   text-align: center;
 }
 
 .hinweis {
   color: var(--farbe-text-hell);
-  font-size: 1.2rem;
-  min-height: 1.6em;     /* reserviert Platz, damit das Layout nicht springt */
-  margin-bottom: 14px;
+  font-size: 1.1rem;
+  min-height: 1.5em;
+  margin-bottom: 10px;
   transition: color 0.2s ease;
 }
-/* Farb-Zustaende des Hinweistextes (per JS gesetzt) */
-.hinweis.erfolg  { color: var(--farbe-erfolg);  font-weight: bold; }
-.hinweis.fehler  { color: var(--farbe-hinweis); font-weight: bold; }
+.hinweis.erfolg { color: var(--farbe-erfolg);  font-weight: bold; }
+.hinweis.fehler { color: var(--farbe-hinweis); font-weight: bold; }
 
-.steuer-buttons {
+/* Container der beiden Steller-Zeilen */
+.einsteller {
   display: flex;
-  align-items: stretch;
-  justify-content: center;
-  gap: 16px;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 480px;
+  margin: 0 auto 12px;
 }
 
-/* Die grossen Plus/Minus-Buttons */
-.zeit-button {
+/* Eine Steller-Zeile:  [ − ]   Label/Wert   [ + ] */
+.stepper-zeile {
+  display: flex;
+  align-items: stretch;
+  gap: 10px;
+  background: var(--farbe-karte);
+  border: 3px solid transparent;
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+  padding: 6px;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+/* Die aktive Zeile (deren Zeiger beim Ziehen bewegt wird) ist hervorgehoben. */
+.stepper-zeile.aktiv {
+  border-color: var(--farbe-hinweis);
+  background: #fff7f0;
+}
+
+.stepper-mitte {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  min-width: 150px;
+  cursor: pointer;
+}
+.stepper-label { font-size: 0.9rem; color: var(--farbe-schiene); }
+.stepper-wert {
+  font-family: "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 2.2rem;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* Die grossen − / + Knoepfe */
+.stepper-btn {
+  min-width: 70px;
   min-height: var(--tap-min);
-  padding: 10px 20px;
+  font-size: 2rem;
+  font-weight: bold;
   font-family: inherit;
-  color: var(--farbe-text);
-  background: var(--farbe-karte);
+  color: var(--farbe-text-hell);
+  background: var(--farbe-himmel);
   border: none;
-  border-radius: var(--radius);
-  box-shadow: var(--schatten);
+  border-radius: 14px;
   cursor: pointer;
   transition: transform 0.1s ease, background 0.15s ease;
 }
-.zeit-button:active { transform: scale(0.95); background: #eef3f9; }
-.zeit-button-pfeil  { font-size: 2rem; font-weight: bold; line-height: 1; }
-.zeit-button-label  { font-size: 1rem; font-weight: bold; }
+.stepper-btn:active { transform: scale(0.92); background: var(--farbe-himmel-hell); }
 
 /* Der grosse zentrale "Abfahrt!"-Button */
 .abfahrt-button {
-  min-width: 200px;
+  width: 100%;
+  max-width: 480px;
   min-height: var(--tap-min);
-  padding: 10px 32px;
+  padding: 12px 24px;
+  font: bold 1.6rem inherit;
   font-family: inherit;
-  font-size: 1.6rem;
-  font-weight: bold;
   color: var(--farbe-text-hell);
   background: var(--farbe-erfolg);
   border: none;
-  border-bottom: 5px solid var(--farbe-erfolg-dkl);  /* 3D-Effekt */
+  border-bottom: 5px solid var(--farbe-erfolg-dkl);
   border-radius: var(--radius);
   box-shadow: var(--schatten);
   cursor: pointer;
@@ -395,7 +403,7 @@ body {
 }
 .abfahrt-button:active {
   transform: translateY(3px);
-  border-bottom-width: 2px;   /* Button wird "heruntergedrueckt" */
+  border-bottom-width: 2px;
 }
 
 
@@ -403,8 +411,7 @@ body {
    6) ANIMATIONEN
    --------------------------------------------------------------------------- */
 
-/* (a) FEHLER: leichtes Schuetteln der Uhr.
-   Die Klasse "schuetteln" wird per JS kurz hinzugefuegt und danach entfernt. */
+/* (a) FEHLER: leichtes Schuetteln der Uhr. */
 @keyframes schuetteln {
   0%, 100% { transform: translateX(0); }
   20%      { transform: translateX(-10px) rotate(-2deg); }
@@ -414,7 +421,7 @@ body {
 }
 .uhr-svg.schuetteln { animation: schuetteln 0.5s ease; }
 
-/* (b) ERFOLG: gruenes Aufleuchten/Pulsieren der Uhr. */
+/* (b) ERFOLG: gruenes Aufleuchten der Uhr. */
 @keyframes erfolg-puls {
   0%   { filter: drop-shadow(0 8px 18px rgba(0,0,0,0.25)); }
   50%  { filter: drop-shadow(0 0 28px var(--farbe-erfolg)) brightness(1.1); }
@@ -422,8 +429,7 @@ body {
 }
 .uhr-svg.erfolg { animation: erfolg-puls 0.9s ease; }
 
-/* (c) ZUG-ABFAHRT: der Zug-Emoji faehrt nach rechts aus dem Bild.
-   Wird bei richtiger Antwort kurz ausgeloest. */
+/* (c) ZUG-ABFAHRT: der Zug faehrt nach rechts aus dem Bild. */
 @keyframes zug-abfahrt {
   0%   { transform: translateX(0);     opacity: 1; }
   70%  { transform: translateX(180px); opacity: 1; }
@@ -434,35 +440,50 @@ body {
 
 /* ---------------------------------------------------------------------------
    7) RESPONSIVES VERHALTEN
-   Auf schmalen Bildschirmen (z.B. Tablet hochkant oder Smartphone) werden
-   Fahrplan und Uhr untereinander gestapelt statt nebeneinander.
    --------------------------------------------------------------------------- */
-@media (max-width: 760px) {
+
+/* (A) GROSSE Bildschirme (Tablet quer / Desktop): zweispaltig nebeneinander. */
+@media (min-width: 820px) {
   .haupt-bereich {
-    flex-direction: column;
-    gap: 20px;
-    padding: 16px;
+    flex-direction: row;
+    gap: 32px;
+    padding: 24px;
   }
-  .fahrplan { width: 100%; }
-
-  .top-bar {
-    justify-content: center;
-    text-align: center;
-  }
-
-  /* Auf kleinen Geraeten duerfen die Buttons die volle Breite nutzen */
-  .zeit-button { flex: 1 1 40%; min-width: 120px; }
-  .abfahrt-button { flex: 1 1 100%; order: -1; } /* Abfahrt-Button nach oben */
+  .fahrplan      { padding: 24px; }
+  .fahrplan-titel { font-size: 1.6rem; }
+  .uhr-svg       { width: min(46vw, 400px); height: min(46vw, 400px); }
 }
 
-/* Sehr niedrige, breite Bildschirme (Tablet quer mit wenig Hoehe):
-   Uhr etwas verkleinern, damit alles ohne Scrollen sichtbar bleibt. */
-@media (max-height: 620px) and (min-width: 761px) {
-  .uhr-svg { width: min(60vh, 300px); height: min(60vh, 300px); }
+/* (B) Kleine HANDYS hochkant: Platz sparen, damit alles ohne viel Scrollen passt. */
+@media (max-width: 400px) {
+  .top-bar { justify-content: center; }
+  .marke   { width: 100%; justify-content: center; }
+  .status-feld { min-width: 54px; padding: 4px 10px; }
+  .status-wert { font-size: 1.2rem; }
+  .level-button { padding: 6px 10px; font-size: 0.85rem; }
+
+  /* Dekorative Zug-Szene ausblenden – spart wertvolle Hoehe. */
+  .szene { display: none; }
+  .fahrplan-titel { font-size: 1.2rem; margin-bottom: 6px; }
+
+  .stepper-wert { font-size: 1.9rem; }
+  .stepper-btn  { min-width: 60px; }
+  .abfahrt-button { font-size: 1.4rem; }
 }
 
-/* Barrierefreiheit: Wer "reduzierte Bewegung" eingestellt hat, bekommt
-   keine animierten Zeiger-Spruenge und keine Schuettel-/Puls-Effekte. */
+/* (C) Sehr NIEDRIGE Bildschirme (Handy quer): Uhr verkleinern. */
+@media (max-height: 560px) {
+  .uhr-svg { width: min(42vh, 240px); height: min(42vh, 240px); }
+  .szene { display: none; }
+}
+
+/* (D) TOUCH-Geraete: noch groessere Tap-Targets, kein Hover noetig. */
+@media (pointer: coarse) {
+  :root { --tap-min: 64px; }
+  .stepper-btn { min-width: 76px; }
+}
+
+/* (E) Barrierefreiheit: bei "reduzierter Bewegung" keine Animationen. */
 @media (prefers-reduced-motion: reduce) {
   .zeiger,
   .uhr-svg.schuetteln,

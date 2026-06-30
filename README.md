@@ -15,11 +15,16 @@ Abfahrtszeit eingestellt werden.
   - **Stufe 1:** volle und halbe Stunden (z. B. `08:00`, `14:30`)
   - **Stufe 2:** Viertelstunden (z. B. `15:15`, `09:45`)
   - **Stufe 3:** minutengenaue Zeiten im 24-Stunden-Format (z. B. `12:07`, `23:55`)
-- **Zwei Steuerungsarten:**
-  - große `− / +`-Buttons (5-Minuten-Schritte, in Stufe 3 1-Minuten-Schritte)
-  - **Drag & Drop** der Zeiger per Maus oder Finger (mit magnetischem Einrasten)
+- **Touch-optimierte Steuerung – Stunde und Minute getrennt** (wie ein
+  mobiler Uhrzeit-Picker):
+  - getrennte große `− / +`-Steller für **Stunde** und **Minute**
+    (Minuten-Schritt je Stufe: 30 / 15 / 1 Minute)
+  - **Drag & Drop** der Zeiger per Finger/Maus: es bewegt sich immer nur der
+    *aktive* Zeiger und rastet magnetisch ein – so kann nichts „wegfliegen".
 - **Fließender Stundenzeiger** – bewegt sich wie bei einer echten Uhr mit den
   Minuten mit.
+- **Mobil-/Hochkant-optimiert:** erkennt Touch-Geräte, große Tap-Targets,
+  Layout passt sich an Handy (hochkant), Tablet und Desktop an.
 - **Freundliches Feedback:** grüne Erfolgs-Animation + abfahrender Zug bei
   richtiger Eingabe, sanftes Schütteln + ermutigender Hinweis bei Fehlern.
   **Kein Game Over** – unendlich viele Versuche.
@@ -27,8 +32,6 @@ Abfahrtszeit eingestellt werden.
   - 🔊 **Sprachausgabe** der Zielzeit (Web Speech API) – ideal für Leseanfänger
   - 🔉 **Soundeffekte** (Web Audio API) – programmatisch erzeugt
   - 💾 **Speichern** von Punkten, Level und Rekord (localStorage)
-- **Tablet-optimiert & responsiv:** große Tap-Targets, keine Hover-Only-Funktionen.
-
 ## 🚀 Starten
 
 Keine Installation, kein Build nötig. Einfach die Datei **`index.html`** in

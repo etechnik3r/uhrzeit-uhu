@@ -3,29 +3,37 @@
    ---------------------------------------------------------------------------
    Reines Vanilla JavaScript (ES6+), keine externen Bibliotheken.
 
+   BEDIENKONZEPT (mobil-/touch-optimiert)
+   --------------------------------------
+   Stunde und Minute werden GETRENNT eingestellt – das ist die uebliche,
+   robuste Variante (vergleichbar mit dem Uhrzeit-Picker auf dem Handy):
+
+     * Es gibt zwei Steller-Zeilen: eine fuer die STUNDE, eine fuer die MINUTE.
+       Jede hat grosse "-" und "+" Knoepfe.
+     * Eine der beiden Zeilen ist "aktiv". Der zur aktiven Zeile gehoerende
+       Zeiger ist auf der Uhr farblich hervorgehoben.
+     * Beim ZIEHEN am Zifferblatt bewegt sich IMMER NUR der aktive Zeiger und
+       folgt dem Finger. Beim Antippen waehlt das Spiel automatisch den Zeiger,
+       dessen Spitze dem Finger am naechsten ist.
+
+   Dadurch entfaellt das fehleranfaellige "Erraten", welcher Zeiger gemeint ist,
+   und die Zeiger koennen nicht mehr unkontrolliert ueber den Bildschirm fliegen.
+
    INHALTSVERZEICHNIS
-     0. "use strict" + IIFE-Kapselung
      1. Konstanten & Konfiguration
      2. Der zentrale Spielzustand (State)
      3. Referenzen auf HTML-Elemente
      4. Hilfsfunktionen (Zeit-Mathematik & Formatierung)
      5. Aufbau des Zifferblatts (SVG)
-     6. Darstellung / Rendering (Zeiger drehen, Anzeigen aktualisieren)
+     6. Darstellung / Rendering
      7. Aufgaben-Erzeugung & Level-Verwaltung
-     8. Steuerung per Buttons (+/- Minuten)
-     9. Steuerung per Drag & Drop (Maus & Touch)
+     8. Steuerung per Stepper-Knoepfen (Stunde/Minute getrennt)
+     9. Steuerung per Drag & Drop am Zifferblatt
     10. Pruefung "Abfahrt!" + Feedback
-    11. Zusatz-APIs: Sprachausgabe, Soundeffekte, Speichern (localStorage)
-    12. Verdrahtung der Events + Spielstart
+    11. Zusatz-APIs: Sprachausgabe, Soundeffekte, Speichern
+    12. Mobil-Erkennung + Event-Verdrahtung + Spielstart
    ===========================================================================*/
 
-/* 0. ----------------------------------------------------------------------
-   "use strict" aktiviert den strikten Modus -> Tippfehler (z.B. Zugriff auf
-   nicht deklarierte Variablen) werfen sofort einen Fehler statt still zu
-   scheitern. Die gesamte Logik liegt in einer IIFE (sofort ausgefuehrte
-   Funktion), damit keine globalen Variablen "auslaufen" und mit anderem
-   Code kollidieren koennen.
-   ------------------------------------------------------------------------- */
 (function () {
   "use strict";
 
@@ -34,80 +42,76 @@
      KONSTANTEN & KONFIGURATION
      ----------------------------------------------------------------------- */
 
-  // Ein voller Tag hat 24 * 60 = 1440 Minuten. Die Spielzeit laeuft daher
-  // immer im Bereich 0 (00:00) bis 1439 (23:59).
+  // Ein voller Tag hat 24 * 60 = 1440 Minuten -> Spielzeit 0..1439.
   var MINUTEN_PRO_TAG = 1440;
 
-  // Pro Level legen wir fest:
-  //   raster: Auf welches Minuten-Raster die Zielzeiten und das magnetische
-  //           Einrasten beim Ziehen gerundet werden.
-  //   schritt: Wie viele Minuten ein Klick auf +/- veraendert.
-  //   name:   Anzeigetext.
+  // Pro Level:
+  //   minuteRaster: erlaubte Minuten-Schrittweite. Sie bestimmt zugleich,
+  //                 - auf welche Werte der Minuten-Steller springt,
+  //                 - und worauf der Minutenzeiger beim Ziehen magnetisch einrastet.
+  //                 (L1: 0/30, L2: 0/15/30/45, L3: jede Minute)
+  //   name:         Anzeigename der Stufe.
   var LEVEL_CONFIG = {
-    1: { raster: 30, schritt: 5, name: "Volle & halbe Stunden" }, // 00 oder 30
-    2: { raster: 15, schritt: 5, name: "Viertelstunden" },        // 00/15/30/45
-    3: { raster: 1,  schritt: 1, name: "Minutengenau (24h)" }     // jede Minute
+    1: { minuteRaster: 30, name: "Volle & halbe Stunden" },
+    2: { minuteRaster: 15, name: "Viertelstunden" },
+    3: { minuteRaster: 1,  name: "Minutengenau (24h)" }
   };
 
-  // Punkte, ab denen automatisch ins naechste Level aufgestiegen wird.
-  // (3 richtige Abfahrten pro Level, bis Level 3 erreicht ist.)
+  // Nach so vielen richtigen Abfahrten pro Stufe wird automatisch aufgestiegen.
   var AUFSTIEG_NACH = 3;
 
-  // Schluessel, unter dem der Spielstand im Browser gespeichert wird.
+  // Speicher-Schluessel fuer localStorage.
   var SPEICHER_SCHLUESSEL = "uhrzeit-uhu-state";
 
-  // Freundliche Hinweistexte bei falscher Eingabe (zufaellig ausgewaehlt).
+  // Freundliche Hinweise bei falscher Eingabe (zufaellig gewaehlt).
   var FEHLER_TIPPS = [
     "Fast! Schau noch einmal genau auf den Minutenzeiger.",
     "Noch nicht ganz. Probiere es ruhig weiter – du schaffst das!",
-    "Knapp daneben. Vergleiche die beiden Zeiten Ziffer fuer Ziffer.",
-    "Hoppla, der Uhu wartet noch. Stelle die Zeiger neu ein."
+    "Knapp daneben. Vergleiche beide Zeiten Ziffer fuer Ziffer.",
+    "Hoppla, der Uhu wartet noch. Stelle Stunde und Minute neu ein."
   ];
 
 
   /* 2. --------------------------------------------------------------------
      DER ZENTRALE SPIELZUSTAND (State)
      -----------------------------------------------------------------------
-     Alle veraenderlichen Werte des Spiels stehen in EINEM Objekt. Das ist
-     das Herzstueck der State-Verwaltung: Statt Daten ueber viele Variablen
-     zu verstreuen, gibt es eine einzige "Quelle der Wahrheit". Jede Aktion
-     veraendert nur dieses Objekt und ruft danach die Render-Funktion auf,
-     die den Bildschirm an den neuen Zustand anpasst.
+     EINE einzige "Quelle der Wahrheit". Jede Aktion aendert nur dieses Objekt
+     und ruft danach die Render-Funktionen auf, die den Bildschirm anpassen.
 
-       aktuelleMinuten : aktuell auf der Uhr eingestellte Zeit (0..1439)
-       zielMinuten     : die geforderte Abfahrtszeit               (0..1439)
-       level           : aktuelle Stufe (1, 2 oder 3)
-       punkte          : Punktestand der laufenden Sitzung
+       aktuelleMinuten : eingestellte Zeit auf der Uhr (0..1439)
+       zielMinuten     : geforderte Abfahrtszeit         (0..1439)
+       level           : Stufe 1..3
+       punkte          : Punkte der laufenden Sitzung
        rekord          : hoechster je erreichter Punktestand (gespeichert)
-       schrittweite    : aktuelle +/- Schrittgroesse (aus LEVEL_CONFIG)
+       aktiverModus    : "stunde" oder "minute" – welcher Zeiger gerade
+                         per Ziehen/Steller bewegt wird
+       istAmZiehen     : true, solange ein Finger/Maustaste die Uhr zieht
      ----------------------------------------------------------------------- */
   var state = {
-    aktuelleMinuten: 8 * 60,   // Start: 08:00
+    aktuelleMinuten: 12 * 60,   // Start: 12:00 (neutraler Ausgangspunkt)
     zielMinuten:     8 * 60,
     level:           1,
     punkte:          0,
     rekord:          0,
-    schrittweite:    5
+    aktiverModus:    "stunde",
+    istAmZiehen:     false
   };
 
 
   /* 3. --------------------------------------------------------------------
-     REFERENZEN AUF HTML-ELEMENTE
-     Wir holen alle benoetigten Elemente EINMAL und merken sie uns. Das ist
-     schneller und uebersichtlicher, als sie staendig neu zu suchen.
+     REFERENZEN AUF HTML-ELEMENTE (einmalig holen)
      ----------------------------------------------------------------------- */
   var el = {
     // Top-Bar
-    level:   document.getElementById("anzeige-level"),
-    punkte:  document.getElementById("anzeige-punkte"),
-    rekord:  document.getElementById("anzeige-rekord"),
+    level:        document.getElementById("anzeige-level"),
+    punkte:       document.getElementById("anzeige-punkte"),
+    rekord:       document.getElementById("anzeige-rekord"),
     levelButtons: document.querySelectorAll(".level-button"),
 
     // Fahrplan
-    zielZeit:    document.getElementById("anzeige-ziel"),
-    auftrag:     document.getElementById("auftrag-text"),
-    vorlesen:    document.getElementById("button-vorlesen"),
-    zug:         document.getElementById("szene-zug"),
+    zielZeit:  document.getElementById("anzeige-ziel"),
+    vorlesen:  document.getElementById("button-vorlesen"),
+    zug:       document.getElementById("szene-zug"),
 
     // Uhr
     svg:          document.getElementById("uhr-svg"),
@@ -117,12 +121,14 @@
     istZeit:      document.getElementById("anzeige-ist"),
 
     // Steuerung
-    minus:      document.getElementById("button-minus"),
-    plus:       document.getElementById("button-plus"),
-    labelMinus: document.getElementById("label-minus"),
-    labelPlus:  document.getElementById("label-plus"),
-    abfahrt:    document.getElementById("button-abfahrt"),
-    hinweis:    document.getElementById("hinweis-text")
+    stepperBtns: document.querySelectorAll(".stepper-btn"),     // − / + Knoepfe
+    stepperMitte: document.querySelectorAll(".stepper-mitte"),  // Wert-Bereiche
+    zeileStunde: document.getElementById("zeile-stunde"),
+    zeileMinute: document.getElementById("zeile-minute"),
+    wertStunde:  document.getElementById("wert-stunde"),
+    wertMinute:  document.getElementById("wert-minute"),
+    abfahrt:     document.getElementById("button-abfahrt"),
+    hinweis:     document.getElementById("hinweis-text")
   };
 
 
@@ -131,91 +137,75 @@
      ----------------------------------------------------------------------- */
 
   /**
-   * Begrenzt einen Minutenwert sauber auf den Bereich 0..1439.
-   * Beispiel: -5 wird zu 1435 (= 23:55), 1445 wird zu 5 (= 00:05).
-   *
-   * Mathematik dahinter (Modulo-Rechnung):
+   * Begrenzt Minuten sauber auf 0..1439 (mit korrektem 24h-Umlauf).
+   * Das doppelte Modulo faengt auch NEGATIVE Werte ab:
    *   ((wert % 1440) + 1440) % 1440
-   * Das doppelte Modulo sorgt dafuer, dass auch NEGATIVE Werte korrekt
-   * "umlaufen" – in JavaScript liefert (-5 % 1440) naemlich -5, was wir
-   * durch +1440 und erneutes Modulo in den positiven Bereich holen.
    */
   function normalisiereMinuten(wert) {
     return ((wert % MINUTEN_PRO_TAG) + MINUTEN_PRO_TAG) % MINUTEN_PRO_TAG;
   }
 
-  /**
-   * Wandelt eine Minutenzahl (0..1439) in einen "HH:MM"-Text um.
-   * z.B. 487 -> "08:07".  padStart(2, "0") fuellt mit fuehrender Null auf.
-   */
+  /** Wandelt 0..1439 in "HH:MM" (z.B. 487 -> "08:07"). */
   function formatZeit(minutenGesamt) {
-    var stunden = Math.floor(minutenGesamt / 60);   // ganze Stunden
-    var minuten = minutenGesamt % 60;               // Restminuten
-    return String(stunden).padStart(2, "0") + ":" + String(minuten).padStart(2, "0");
+    var stunden = Math.floor(minutenGesamt / 60);
+    var minuten = minutenGesamt % 60;
+    return zweiStellen(stunden) + ":" + zweiStellen(minuten);
   }
 
-  /**
-   * Liefert eine zufaellige ganze Zahl im Bereich [min, max] (beide inklusive).
-   * Wird zum Erzeugen neuer Aufgaben benoetigt.
-   */
+  /** Fuellt eine Zahl auf zwei Stellen mit fuehrender Null auf (7 -> "07"). */
+  function zweiStellen(zahl) {
+    return String(zahl).padStart(2, "0");
+  }
+
+  /** Zufaellige ganze Zahl im Bereich [min, max] (beide inklusive). */
   function zufallGanzzahl(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
   }
 
+  /** Aktuelle Stunde (0..23) aus dem State. */
+  function aktuelleStunde() { return Math.floor(state.aktuelleMinuten / 60); }
+  /** Aktuelle Minute (0..59) aus dem State. */
+  function aktuelleMinute() { return state.aktuelleMinuten % 60; }
+
 
   /* 5. --------------------------------------------------------------------
      AUFBAU DES ZIFFERBLATTS (SVG)
-     Wir erzeugen die 12 Stundenmarkierungen und Ziffern einmalig per Code,
-     damit das HTML schlank bleibt. Gerechnet wird mit Winkeln und Sinus/Kosinus.
      ----------------------------------------------------------------------- */
 
-  // Kleiner Helfer, um SVG-Elemente korrekt zu erzeugen. SVG-Tags brauchen
-  // einen speziellen Namensraum (Namespace) – mit document.createElement
-  // allein wuerden sie NICHT dargestellt.
   var SVG_NS = "http://www.w3.org/2000/svg";
+
+  /** Erzeugt ein SVG-Element mit Attributen (SVG braucht den Namespace). */
   function svgEl(typ, attribute) {
     var element = document.createElementNS(SVG_NS, typ);
-    for (var name in attribute) {
-      element.setAttribute(name, attribute[name]);
-    }
+    for (var name in attribute) { element.setAttribute(name, attribute[name]); }
     return element;
   }
 
   /**
-   * Zeichnet die 12 Stunden-Striche und die Ziffern 1..12.
+   * Zeichnet die 12 Stunden-Striche und Ziffern 1..12.
    *
    * Winkel-Mathematik:
-   *   - Der Vollkreis hat 360 Grad, 12 Stunden -> 30 Grad pro Stunde.
-   *   - In SVG zeigt der Winkel 0 nach RECHTS (3-Uhr-Position) und waechst
-   *     im Uhrzeigersinn nach unten. Damit die "12" oben steht, ziehen wir
-   *     90 Grad ab (-90).
-   *   - Umrechnung Grad -> Radiant (fuer Math.cos/Math.sin): grad * PI / 180.
-   *   - Position auf einem Kreis mit Radius r um den Mittelpunkt (100,100):
-   *         x = 100 + r * cos(winkel)
-   *         y = 100 + r * sin(winkel)
+   *   - 360 Grad / 12 Stunden = 30 Grad pro Stunde.
+   *   - In SVG zeigt Winkel 0 nach RECHTS und waechst im Uhrzeigersinn; damit
+   *     die "12" oben steht, ziehen wir 90 Grad ab.
+   *   - Grad -> Radiant: grad * PI / 180.
+   *   - Punkt auf Kreis (Radius r) um Mittelpunkt (100,100):
+   *         x = 100 + r * cos(winkel),  y = 100 + r * sin(winkel)
    */
   function zeichneZifferblatt() {
     for (var stunde = 1; stunde <= 12; stunde++) {
-      var winkelGrad = stunde * 30 - 90;                 // 30 Grad je Stunde, oben = 12
-      var winkelRad  = winkelGrad * Math.PI / 180;       // in Radiant umrechnen
+      var winkelGrad = stunde * 30 - 90;
+      var winkelRad  = winkelGrad * Math.PI / 180;
       var cos = Math.cos(winkelRad);
       var sin = Math.sin(winkelRad);
 
-      // (a) Markierungsstrich: von Radius 78 bis 88 nach aussen.
-      var strich = svgEl("line", {
+      el.markierungen.appendChild(svgEl("line", {
         x1: 100 + 78 * cos, y1: 100 + 78 * sin,
         x2: 100 + 88 * cos, y2: 100 + 88 * sin,
-        // Die "Haupt"-Stunden 3,6,9,12 bekommen einen dickeren Strich.
         class: "markierung-strich" + (stunde % 3 === 0 ? " voll" : "")
-      });
-      el.markierungen.appendChild(strich);
+      }));
 
-      // (b) Stundenziffer: etwas weiter innen (Radius 66).
-      var zahl = svgEl("text", {
-        x: 100 + 66 * cos,
-        y: 100 + 66 * sin,
-        class: "markierung-zahl"
-      });
+      var zahl = svgEl("text", { x: 100 + 66 * cos, y: 100 + 66 * sin, class: "markierung-zahl" });
       zahl.textContent = String(stunde);
       el.markierungen.appendChild(zahl);
     }
@@ -224,57 +214,59 @@
 
   /* 6. --------------------------------------------------------------------
      DARSTELLUNG / RENDERING
-     Diese Funktion bringt den Bildschirm in Einklang mit dem State. Sie wird
-     nach JEDER Zustandsaenderung aufgerufen ("ein Ort, der alles aktualisiert").
+     Bringt den Bildschirm in Einklang mit dem State.
      ----------------------------------------------------------------------- */
 
   /**
-   * Berechnet die Zeiger-Winkel aus der aktuellen Zeit und dreht die SVG-Zeiger.
+   * Berechnet die Zeiger-Winkel und dreht die Zeiger.
    *
-   * Die zentrale Uhren-Mathematik:
-   *   MINUTENZEIGER:
-   *     Er macht in 60 Minuten eine volle 360-Grad-Drehung.
-   *     -> 360 / 60 = 6 Grad pro Minute.
-   *     minutenWinkel = (aktuelleMinuten % 60) * 6
+   * Uhren-Mathematik:
+   *   MINUTENZEIGER: volle Drehung in 60 Min -> 360/60 = 6 Grad pro Minute.
+   *       minutenWinkel = (aktuelleMinuten % 60) * 6
+   *   STUNDENZEIGER: volle Drehung in 12 h (720 Min) -> 360/720 = 0,5 Grad/Min.
+   *       stundenWinkel = (aktuelleMinuten % 720) * 0,5
+   *   Der Faktor 0,5 sorgt fuer das FLIESSENDE Mitwandern: um 08:30 steht der
+   *   Stundenzeiger genau zwischen 8 und 9 – wie bei einer echten Uhr.
    *
-   *   STUNDENZEIGER (bewegt sich FLIESSEND mit):
-   *     Er macht in 12 Stunden (= 720 Minuten) eine volle 360-Grad-Drehung.
-   *     -> 360 / 720 = 0,5 Grad pro Minute.
-   *     stundenWinkel = (aktuelleMinuten % 720) * 0,5
-   *     Dadurch steht der Stundenzeiger z.B. um 08:30 genau zwischen 8 und 9
-   *     – wie bei einer echten Uhr.
-   *
-   * Da die Zeiger im HTML bereits nach OBEN (12-Uhr) zeigen, entspricht der
-   * berechnete Winkel direkt der noetigen Drehung im Uhrzeigersinn.
+   * Die Drehung wird ueber die CSS-Eigenschaft "transform" gesetzt (siehe
+   * Erklaerung im CSS): zusammen mit transform-box/-origin dreht sich der
+   * Zeiger zuverlaessig um die Uhrmitte – auch auf Touch-Geraeten.
    */
   function aktualisiereUhr() {
     var minutenWinkel = (state.aktuelleMinuten % 60) * 6;
     var stundenWinkel = (state.aktuelleMinuten % 720) * 0.5;
 
-    // rotate(grad, drehpunktX, drehpunktY) dreht um den Uhr-Mittelpunkt (100,100).
-    el.zeigerMinute.setAttribute("transform", "rotate(" + minutenWinkel + " 100 100)");
-    el.zeigerStunde.setAttribute("transform", "rotate(" + stundenWinkel + " 100 100)");
+    el.zeigerMinute.style.transform = "rotate(" + minutenWinkel + "deg)";
+    el.zeigerStunde.style.transform = "rotate(" + stundenWinkel + "deg)";
 
-    // Die digitale IST-Anzeige unter der Uhr mitfuehren.
+    // Digitale IST-Anzeige unter der Uhr.
     el.istZeit.textContent = formatZeit(state.aktuelleMinuten);
+
+    // Steller-Werte (zweistellig) aktualisieren.
+    el.wertStunde.textContent = zweiStellen(aktuelleStunde());
+    el.wertMinute.textContent = zweiStellen(aktuelleMinute());
+
+    // Aktiven Zeiger + aktive Steller-Zeile hervorheben.
+    markiereAktivenModus();
   }
 
-  /**
-   * Aktualisiert die Top-Bar (Level, Punkte, Rekord) und die Button-Beschriftungen.
-   */
+  /** Hebt den aktiven Zeiger und die aktive Steller-Zeile optisch hervor. */
+  function markiereAktivenModus() {
+    var stundeAktiv = state.aktiverModus === "stunde";
+    el.zeigerStunde.classList.toggle("aktiv", stundeAktiv);
+    el.zeigerMinute.classList.toggle("aktiv", !stundeAktiv);
+    el.zeileStunde.classList.toggle("aktiv", stundeAktiv);
+    el.zeileMinute.classList.toggle("aktiv", !stundeAktiv);
+  }
+
+  /** Aktualisiert Top-Bar (Level, Punkte, Rekord) und die Level-Buttons. */
   function aktualisiereStatus() {
     el.level.textContent  = state.level;
     el.punkte.textContent = state.punkte;
     el.rekord.textContent = state.rekord;
 
-    // Button-Labels an die aktuelle Schrittweite anpassen.
-    el.labelMinus.textContent = state.schrittweite + " Minuten";
-    el.labelPlus.textContent  = state.schrittweite + " Minuten";
-
-    // Das aktive Level optisch hervorheben.
     el.levelButtons.forEach(function (button) {
-      var istAktiv = Number(button.dataset.level) === state.level;
-      button.classList.toggle("aktiv", istAktiv);
+      button.classList.toggle("aktiv", Number(button.dataset.level) === state.level);
     });
   }
 
@@ -284,58 +276,42 @@
      ----------------------------------------------------------------------- */
 
   /**
-   * Erzeugt eine neue Zielzeit passend zum uebergebenen/aktuellen Level.
-   *
-   * Vorgehen je Level:
-   *   Level 1: Stunde 0..23 + Minute aus {0, 30}.
-   *   Level 2: Stunde 0..23 + Minute aus {0, 15, 30, 45}.
-   *   Level 3: irgendeine Minute aus 0..1439 (volles 24h-Format, minutengenau).
-   *
-   * Damit die Aufgabe nicht zufaellig gleich der bereits eingestellten Zeit
-   * ist, wiederholen wir die Ziehung notfalls.
+   * Erzeugt eine neue Zielzeit passend zum aktuellen Level.
+   *   Level 1: Stunde 0..23 + Minute aus {0, 30}
+   *   Level 2: Stunde 0..23 + Minute aus {0, 15, 30, 45}
+   *   Level 3: irgendeine Minute aus 0..1439 (minutengenau, 24h)
    */
   function neueAufgabe() {
-    var raster = LEVEL_CONFIG[state.level].raster;
+    var raster = LEVEL_CONFIG[state.level].minuteRaster;
     var neuesZiel;
 
     do {
       if (state.level === 3) {
-        // Minutengenau: jede der 1440 Minuten ist moeglich.
         neuesZiel = zufallGanzzahl(0, MINUTEN_PRO_TAG - 1);
       } else {
-        // Level 1 & 2: zufaellige Stunde + ein erlaubter Minutenwert.
         var stunde = zufallGanzzahl(0, 23);
-        // Anzahl moeglicher Rasterschritte innerhalb einer Stunde:
-        //   Level 1 -> raster 30 -> 60/30 = 2 Werte (0, 30)
-        //   Level 2 -> raster 15 -> 60/15 = 4 Werte (0,15,30,45)
-        var minuteSchritt = zufallGanzzahl(0, 60 / raster - 1);
-        neuesZiel = stunde * 60 + minuteSchritt * raster;
+        // Anzahl erlaubter Minutenwerte pro Stunde: 60 / raster
+        //   L1 -> 60/30 = 2 (0,30);  L2 -> 60/15 = 4 (0,15,30,45)
+        var minute = zufallGanzzahl(0, 60 / raster - 1) * raster;
+        neuesZiel = stunde * 60 + minute;
       }
-    } while (neuesZiel === state.zielMinuten); // keine identische Wiederholung
+    } while (neuesZiel === state.zielMinuten); // keine direkte Wiederholung
 
     state.zielMinuten = neuesZiel;
 
-    // Die Uhr selbst stellen wir bewusst NICHT auf die Loesung, sondern auf
-    // einen neutralen Startwert (volle Stunde 12:00), damit das Kind die
-    // Zeiger aktiv einstellen muss.
+    // Uhr auf neutralen Startwert (12:00) – das Kind stellt aktiv ein.
     state.aktuelleMinuten = 12 * 60;
+    // Zu Beginn jeder Aufgabe ist die Stunde aktiv (Stunde zuerst einstellen).
+    state.aktiverModus = "stunde";
 
-    // Bildschirm aktualisieren.
     el.zielZeit.textContent = formatZeit(state.zielMinuten);
     aktualisiereUhr();
     zeigeHinweis("Stelle die Uhr auf " + formatZeit(state.zielMinuten) + ".", "");
   }
 
-  /**
-   * Wechselt das Level, uebernimmt dessen Konfiguration und startet eine
-   * neue Aufgabe. Wird sowohl von den Level-Buttons als auch beim
-   * automatischen Aufstieg verwendet.
-   */
+  /** Wechselt das Level, uebernimmt dessen Konfiguration, startet neue Aufgabe. */
   function setzeLevel(neuesLevel) {
-    // Sicherheitshalber auf gueltigen Bereich 1..3 begrenzen.
     state.level = Math.max(1, Math.min(3, neuesLevel));
-    state.schrittweite = LEVEL_CONFIG[state.level].schritt;
-
     aktualisiereStatus();
     neueAufgabe();
     speichereStand();
@@ -343,167 +319,213 @@
 
 
   /* 8. --------------------------------------------------------------------
-     STEUERUNG PER BUTTONS (+/- Minuten)
+     STEUERUNG PER STEPPER-KNOEPFEN (Stunde/Minute GETRENNT)
+     -----------------------------------------------------------------------
+     Stunde und Minute werden unabhaengig voneinander veraendert. Das ist die
+     entscheidende Verbesserung gegenueber "nur +/- Minuten": Eine Zielzeit wie
+     18:30 ist so in wenigen Tipps erreichbar (Stunde hoch bis 18, Minute auf 30)
+     statt durch dutzendfaches Minuten-Klicken.
      ----------------------------------------------------------------------- */
 
   /**
-   * Veraendert die eingestellte Zeit um +/- die aktuelle Schrittweite.
-   * "richtung" ist +1 (plus) oder -1 (minus).
-   *
-   * Die Modulo-Logik in normalisiereMinuten() sorgt fuer einen sauberen
-   * 24-Stunden-Umlauf: von 23:55 +5 Min -> 00:00, von 00:00 -5 Min -> 23:55.
+   * Aktiviert einen Modus ("stunde" oder "minute"): legt fest, welcher Zeiger
+   * per Ziehen bewegt wird, und hebt die passende Zeile/den Zeiger hervor.
    */
-  function aendereZeit(richtung) {
-    var neu = state.aktuelleMinuten + richtung * state.schrittweite;
-    state.aktuelleMinuten = normalisiereMinuten(neu);
+  function setzeModus(modus) {
+    state.aktiverModus = modus;
+    markiereAktivenModus();
+  }
+
+  /**
+   * Veraendert eine Zeitkomponente um +1/-1 Schritt.
+   *   modus = "stunde": Stunde +/- 1, im 24h-Umlauf (23 -> 0, 0 -> 23).
+   *   modus = "minute": Minute +/- minuteRaster, im 60-Min-Umlauf, OHNE die
+   *                     Stunde zu veraendern (Stunde und Minute bleiben getrennt).
+   */
+  function aendereKomponente(modus, richtung) {
+    setzeModus(modus); // der bediente Steller wird automatisch aktiv
+
+    var stunde = aktuelleStunde();
+    var minute = aktuelleMinute();
+
+    if (modus === "stunde") {
+      // (stunde + richtung + 24) % 24  -> sauberer 0..23-Umlauf
+      stunde = (stunde + richtung + 24) % 24;
+    } else {
+      var raster = LEVEL_CONFIG[state.level].minuteRaster;
+      // (minute + richtung*raster + 60) % 60 -> sauberer 0..59-Umlauf
+      minute = (minute + richtung * raster + 60) % 60;
+    }
+
+    state.aktuelleMinuten = stunde * 60 + minute;
     aktualisiereUhr();
   }
 
 
   /* 9. --------------------------------------------------------------------
-     STEUERUNG PER DRAG & DROP (Maus & Touch ueber Pointer Events)
+     STEUERUNG PER DRAG & DROP AM ZIFFERBLATT (Maus & Touch)
      -----------------------------------------------------------------------
-     Pointer Events vereinheitlichen Maus, Finger und Stift in EINER API –
-     so muessen wir Touch und Maus nicht getrennt behandeln.
-
-     Idee:
-       1. Beim Druck auf die Uhr stellen wir fest, welcher Zeiger gemeint ist
-          (Minute oder Stunde) – je nachdem, ob der Klick eher am langen oder
-          kurzen Zeiger liegt.
-       2. Waehrend der Bewegung berechnen wir aus der Cursor-/Finger-Position
-          relativ zum Uhr-Mittelpunkt den Winkel (Math.atan2) und rechnen ihn
-          in Minuten um.
-       3. Der Wert rastet magnetisch auf das Level-Raster ein.
+     Pointer Events vereinheitlichen Maus, Finger und Stift in EINER API.
+     Beim Druck waehlen wir den Zeiger, dessen SPITZE dem Finger am naechsten
+     ist, und ziehen dann NUR diesen Zeiger. So kann nichts "wegfliegen".
      ----------------------------------------------------------------------- */
 
-  // Merkt sich, welcher Zeiger gerade gezogen wird: "minute", "stunde" oder null.
-  var aktiverZeiger = null;
-
   /**
-   * Rechnet eine Bildschirm-Position (clientX/clientY) in einen Winkel in Grad
-   * um, gemessen vom Uhr-Mittelpunkt aus, wobei 0 Grad = 12-Uhr-Position (oben)
-   * und im Uhrzeigersinn ansteigend.
+   * Rechnet eine Bildschirmposition in einen Winkel (Grad) um, gemessen von der
+   * Uhrmitte, mit 0 Grad = 12-Uhr (oben), steigend im Uhrzeigersinn.
    *
-   * Math.atan2(dy, dx) liefert den Winkel des Punktes (dx, dy) zur X-Achse im
-   * Bereich -180..+180 Grad. Da bei uns 0 nach OBEN zeigen soll (statt nach
-   * rechts) und im Uhrzeigersinn laufen soll, vertauschen/justieren wir die
-   * Argumente: atan2(dx, -dy) liefert genau diese gedrehte Orientierung.
+   * Math.atan2(dx, -dy) liefert genau diese Orientierung:
+   *   - normalerweise misst atan2(dy, dx) von der X-Achse (3-Uhr) gegen den
+   *     Uhrzeigersinn; durch Vertauschen/Vorzeichen drehen wir den Nullpunkt
+   *     nach oben und die Richtung in den Uhrzeigersinn.
    */
   function positionZuWinkel(clientX, clientY) {
-    var rechteck = el.svg.getBoundingClientRect();
-    // Mittelpunkt der Uhr in Bildschirmkoordinaten.
-    var mitteX = rechteck.left + rechteck.width / 2;
-    var mitteY = rechteck.top + rechteck.height / 2;
-
+    var r = el.svg.getBoundingClientRect();
+    var mitteX = r.left + r.width  / 2;
+    var mitteY = r.top  + r.height / 2;
     var dx = clientX - mitteX;
     var dy = clientY - mitteY;
-
-    // atan2(dx, -dy): 0 Grad oben, 90 Grad rechts, 180 unten, 270 links.
     var winkel = Math.atan2(dx, -dy) * 180 / Math.PI;
-    if (winkel < 0) { winkel += 360; }   // in den Bereich 0..360 bringen
+    if (winkel < 0) { winkel += 360; }
     return winkel;
   }
 
   /**
-   * Verarbeitet eine Zieh-Position: wandelt sie in eine Zeit um und rastet ein.
+   * Liefert die Bildschirm-Koordinaten der Spitze eines Zeigers. Wird benoetigt,
+   * um beim Antippen den naechstgelegenen Zeiger zu bestimmen.
    *
-   * - Wird der MINUTENZEIGER gezogen, bestimmt der Winkel die Minute (0..59):
-   *       minute = winkel / 6        (denn 6 Grad pro Minute)
-   *   Die Stunde bleibt erhalten. Anschliessend rasten wir minutengenau bzw.
-   *   auf das Level-Raster ein.
+   * Spitze in viewBox-Koordinaten (Laenge len ab Mitte, Winkel des Zeigers):
+   *     x = 100 + len * sin(winkel),  y = 100 - len * cos(winkel)
+   * Danach rechnen wir viewBox (0..200) auf die echte Pixelgroesse um.
+   */
+  function zeigerSpitze(modus) {
+    var winkelGrad = (modus === "minute")
+      ? (state.aktuelleMinuten % 60) * 6
+      : (state.aktuelleMinuten % 720) * 0.5;
+    var rad = winkelGrad * Math.PI / 180;
+    var len = (modus === "minute") ? 70 : 48; // Zeigerlaengen in viewBox-Einheiten
+
+    var vbX = 100 + len * Math.sin(rad);
+    var vbY = 100 - len * Math.cos(rad);
+
+    var r = el.svg.getBoundingClientRect();
+    return {
+      x: r.left + (vbX / 200) * r.width,
+      y: r.top  + (vbY / 200) * r.height
+    };
+  }
+
+  /**
+   * Abstand eines Punktes (px,py) zur Strecke A->B (Zeiger als Linie).
+   * Wir projizieren den Punkt auf die Strecke (Parameter t, auf 0..1 begrenzt)
+   * und messen den Abstand zur Projektion. So zaehlt nicht nur die Spitze,
+   * sondern der ganze Zeiger-Strahl als "greifbar".
+   */
+  function abstandZuStrecke(px, py, a, b) {
+    var vx = b.x - a.x, vy = b.y - a.y;
+    var wx = px - a.x,  wy = py - a.y;
+    var laengeQuadrat = vx * vx + vy * vy;
+    // t = Projektion von w auf v, geteilt durch |v|^2 (auf [0,1] geklemmt).
+    var t = laengeQuadrat > 0 ? (wx * vx + wy * vy) / laengeQuadrat : 0;
+    t = Math.max(0, Math.min(1, t));
+    var projX = a.x + t * vx, projY = a.y + t * vy;
+    return Math.sqrt((px - projX) * (px - projX) + (py - projY) * (py - projY));
+  }
+
+  /**
+   * Entscheidet beim Antippen, ob (und auf welchen) Zeiger umgeschaltet wird.
    *
-   * - Wird der STUNDENZEIGER gezogen, bestimmt der Winkel die Stunde innerhalb
-   *   eines 12-Stunden-Zifferblatts:
-   *       stunde12 = winkel / 30     (30 Grad pro Stunde)
-   *   Wir behalten dabei die Vormittag/Nachmittag-Haelfte (AM/PM) bei, damit
-   *   sich die 24h-Zuordnung nicht unbeabsichtigt umdreht.
+   * Idee: Liegt der Druck EINDEUTIG nahe an einem Zeiger, greift man diesen.
+   * Liegt er irgendwo im freien Bereich (z.B. am Rand oder in der Mitte), bleibt
+   * der zuvor per Steller gewaehlte aktive Zeiger erhalten – und wird beim
+   * Ziehen dorthin bewegt. Das verhindert, dass eine Beruehrung in der Mitte
+   * ungewollt den Zeiger wechselt.
+   *
+   * Rueckgabe: "minute" / "stunde" (umschalten) oder null (aktiven Modus behalten).
+   */
+  function bestimmeZeigerBeiDruck(px, py) {
+    var r = el.svg.getBoundingClientRect();
+    var mitte = { x: r.left + r.width / 2, y: r.top + r.height / 2 };
+
+    var dMinute = abstandZuStrecke(px, py, mitte, zeigerSpitze("minute"));
+    var dStunde = abstandZuStrecke(px, py, mitte, zeigerSpitze("stunde"));
+
+    var schwelle = r.width * 0.16;            // "nahe an einem Zeiger"
+    if (Math.min(dMinute, dStunde) > schwelle) { return null; }        // zu weit weg
+    if (Math.abs(dMinute - dStunde) < r.width * 0.05) { return null; } // zu mehrdeutig
+    return dMinute < dStunde ? "minute" : "stunde";
+  }
+
+  /**
+   * Verarbeitet eine Zieh-Position: bewegt NUR den aktiven Zeiger.
+   *
+   *   MINUTE aktiv: winkel -> Minute (0..59), magnetisch auf das Level-Raster
+   *                 eingerastet. Die Stunde bleibt erhalten.
+   *       minute = round(winkel / 6)            (6 Grad pro Minute)
+   *   STUNDE aktiv: winkel -> Position auf dem 12er-Blatt (0..11). Die aktuelle
+   *                 Tageshaelfte (vormittags 0..11 / nachmittags 12..23) bleibt
+   *                 erhalten; zwischen den Haelften wechselt man bequem mit den
+   *                 Stunden-Knoepfen.
+   *       pos = round(winkel / 30)              (30 Grad pro Stunde)
    */
   function verarbeiteZiehen(clientX, clientY) {
     var winkel = positionZuWinkel(clientX, clientY);
+    var stunde = aktuelleStunde();
+    var minute = aktuelleMinute();
 
-    if (aktiverZeiger === "minute") {
-      // Winkel -> Minute (0..59), kaufmaennisch gerundet.
-      var minute = Math.round(winkel / 6) % 60;
-      var stundeBisher = Math.floor(state.aktuelleMinuten / 60);
-      var gesamt = stundeBisher * 60 + minute;
-      // Magnetisches Einrasten auf das Level-Raster (z.B. naechste 15 Min).
-      state.aktuelleMinuten = rasteEin(gesamt);
-
-    } else if (aktiverZeiger === "stunde") {
-      // Winkel -> Stunde auf dem 12er-Blatt (0..11). 0 Grad = 12 Uhr -> Index 0.
-      var stunde12 = Math.round(winkel / 30) % 12;
-      // Aktuelle Tageshaelfte beibehalten: 0 = vormittags (0..11),
-      // 1 = nachmittags (12..23).
-      var haelfte = state.aktuelleMinuten >= 12 * 60 ? 1 : 0;
-      var minuteBisher = state.aktuelleMinuten % 60;
-      var stunde24 = haelfte * 12 + stunde12;
-      state.aktuelleMinuten = normalisiereMinuten(stunde24 * 60 + minuteBisher);
+    if (state.aktiverModus === "minute") {
+      var rohMinute = Math.round(winkel / 6) % 60;
+      minute = rasteMinuteEin(rohMinute);
+    } else {
+      var pos = Math.round(winkel / 30) % 12;       // 0 = 12-Uhr-Position
+      var haelfte = (stunde >= 12) ? 12 : 0;        // aktuelle Tageshaelfte
+      stunde = haelfte + pos;                       // 0..23
     }
 
+    state.aktuelleMinuten = normalisiereMinuten(stunde * 60 + minute);
     aktualisiereUhr();
   }
 
   /**
-   * Rundet eine Gesamtzeit (Minuten) auf das aktuelle Level-Raster.
-   *   Level 1 -> auf 30er-Schritte, Level 2 -> 15er, Level 3 -> 1er (kein Effekt).
-   * Beispiel Level 2: 487 (08:07) -> rundet auf 480 (08:00) bzw. 495 (08:15),
-   * je nachdem was naeher liegt.
+   * Rastet eine Minute (0..59) magnetisch auf das Level-Raster ein.
+   *   L1 -> 0/30, L2 -> 0/15/30/45, L3 -> jede Minute.
+   * round(minute / raster) * raster, danach sauber in 0..59 halten.
    */
-  function rasteEin(minutenGesamt) {
-    var raster = LEVEL_CONFIG[state.level].raster;
-    var gerundet = Math.round(minutenGesamt / raster) * raster;
-    return normalisiereMinuten(gerundet);
+  function rasteMinuteEin(minute) {
+    var raster = LEVEL_CONFIG[state.level].minuteRaster;
+    var gerundet = Math.round(minute / raster) * raster;
+    return ((gerundet % 60) + 60) % 60;
   }
 
-  /**
-   * Entscheidet beim ersten Druck, welcher Zeiger "gemeint" ist.
-   * Strategie: Wir vergleichen den Druckwinkel mit den aktuellen Winkeln von
-   * Minuten- und Stundenzeiger und waehlen den, der WINKELMAESSIG naeher liegt.
-   * Das fuehlt sich natuerlich an: Man greift den Zeiger, auf den man zeigt.
-   */
-  function waehleZeiger(clientX, clientY) {
-    var druckWinkel = positionZuWinkel(clientX, clientY);
-    var minutenWinkel = (state.aktuelleMinuten % 60) * 6;
-    var stundenWinkel = (state.aktuelleMinuten % 720) * 0.5;
-
-    // Hilfsfunktion: kleinster Abstand zweier Winkel (beachtet den 360-Umlauf).
-    function winkelAbstand(a, b) {
-      var d = Math.abs(a - b) % 360;
-      return d > 180 ? 360 - d : d;
-    }
-
-    var abstandMinute = winkelAbstand(druckWinkel, minutenWinkel);
-    var abstandStunde = winkelAbstand(druckWinkel, stundenWinkel);
-
-    return abstandMinute <= abstandStunde ? "minute" : "stunde";
-  }
-
-  // --- Event-Handler fuer das Ziehen ---
+  // --- Event-Handler fuers Ziehen ---
 
   function aufZeigerDruck(ereignis) {
-    // Standardverhalten (z.B. Text markieren) unterdruecken.
     ereignis.preventDefault();
-    aktiverZeiger = waehleZeiger(ereignis.clientX, ereignis.clientY);
+    state.istAmZiehen = true;
 
-    // Transition abschalten, damit der Zeiger dem Finger sofort folgt.
+    // Nur umschalten, wenn der Druck eindeutig nahe an einem Zeiger liegt –
+    // sonst bleibt der aktive (per Steller gewaehlte) Zeiger erhalten.
+    var gewaehlt = bestimmeZeigerBeiDruck(ereignis.clientX, ereignis.clientY);
+    if (gewaehlt) { setzeModus(gewaehlt); }
+
+    // ... weiche Animation abschalten (Zeiger folgt sofort) ...
     el.svg.classList.add("wird-gezogen");
 
-    // pointer capture: alle weiteren Bewegungen gehen an dieses Element,
-    // auch wenn der Finger das SVG kurz verlaesst.
+    // ... und alle weiteren Bewegungen an die Uhr "fesseln" (auch ausserhalb).
     if (el.svg.setPointerCapture) {
-      el.svg.setPointerCapture(ereignis.pointerId);
+      try { el.svg.setPointerCapture(ereignis.pointerId); } catch (e) { /* egal */ }
     }
     verarbeiteZiehen(ereignis.clientX, ereignis.clientY);
   }
 
   function aufZeigerBewegung(ereignis) {
-    if (!aktiverZeiger) { return; } // nur reagieren, wenn wirklich gezogen wird
+    if (!state.istAmZiehen) { return; }
     ereignis.preventDefault();
     verarbeiteZiehen(ereignis.clientX, ereignis.clientY);
   }
 
   function aufZeigerLoslassen() {
-    aktiverZeiger = null;
+    state.istAmZiehen = false;
     el.svg.classList.remove("wird-gezogen");
   }
 
@@ -512,10 +534,7 @@
      PRUEFUNG "ABFAHRT!" + FEEDBACK
      ----------------------------------------------------------------------- */
 
-  /**
-   * Vergleicht die eingestellte Zeit mit der Zielzeit und gibt Rueckmeldung.
-   * Es gibt KEIN Game Over: Bei Fehlern darf beliebig oft weiterprobiert werden.
-   */
+  /** Vergleicht eingestellte Zeit mit Zielzeit. Kein Game Over – beliebig oft. */
   function pruefeAbfahrt() {
     if (state.aktuelleMinuten === state.zielMinuten) {
       // ---- RICHTIG ----
@@ -526,15 +545,13 @@
       spielKlang("erfolg");
       starteErfolgsAnimation();
 
-      // Automatischer Levelaufstieg: nach AUFSTIEG_NACH Punkten je Stufe.
-      // Beispiel: 3 Punkte -> Level 2, 6 Punkte -> Level 3.
+      // Automatischer Aufstieg: 3 Punkte -> L2, 6 Punkte -> L3 (max. L3).
       var gewuenschtesLevel = Math.min(3, Math.floor(state.punkte / AUFSTIEG_NACH) + 1);
 
       aktualisiereStatus();
       speichereStand();
 
-      // Nach kurzer Verzoegerung (damit die Animation sichtbar ist) geht es
-      // mit der naechsten Aufgabe weiter – ggf. in der naechsten Epoche/Level.
+      // Kurz warten (Animation sichtbar), dann naechste Aufgabe/Epoche.
       window.setTimeout(function () {
         if (gewuenschtesLevel !== state.level) {
           setzeLevel(gewuenschtesLevel);
@@ -546,26 +563,19 @@
 
     } else {
       // ---- FALSCH ---- (sanftes, ermutigendes Feedback)
-      var tipp = FEHLER_TIPPS[zufallGanzzahl(0, FEHLER_TIPPS.length - 1)];
-      zeigeHinweis(tipp, "fehler");
+      zeigeHinweis(FEHLER_TIPPS[zufallGanzzahl(0, FEHLER_TIPPS.length - 1)], "fehler");
       spielKlang("fehler");
       starteSchuettelAnimation();
     }
   }
 
-  /**
-   * Setzt den Hinweistext und seine Farbklasse ("erfolg", "fehler" oder "").
-   */
+  /** Setzt Hinweistext und Farbklasse ("erfolg", "fehler" oder ""). */
   function zeigeHinweis(text, art) {
     el.hinweis.textContent = text;
     el.hinweis.className = "hinweis" + (art ? " " + art : "");
   }
 
-  /**
-   * Loest die gruene Erfolgs-Animation der Uhr und die Zug-Abfahrt aus.
-   * Die Animationsklassen werden nach Ablauf wieder entfernt, damit sie beim
-   * naechsten Mal erneut greifen.
-   */
+  /** Gruene Erfolgs-Animation + abfahrender Zug. */
   function starteErfolgsAnimation() {
     el.svg.classList.add("erfolg");
     el.zug.classList.add("faehrt");
@@ -575,60 +585,42 @@
     }, 1000);
   }
 
-  /**
-   * Loest das kurze Schuetteln der Uhr bei falscher Antwort aus.
-   */
+  /** Kurzes Schuetteln der Uhr bei falscher Antwort. */
   function starteSchuettelAnimation() {
     el.svg.classList.add("schuetteln");
-    window.setTimeout(function () {
-      el.svg.classList.remove("schuetteln");
-    }, 500);
+    window.setTimeout(function () { el.svg.classList.remove("schuetteln"); }, 500);
   }
 
 
   /* 11. -------------------------------------------------------------------
      ZUSATZ-APIs: SPRACHAUSGABE, SOUNDEFFEKTE, SPEICHERN
-     Alle drei sind rein browser-nativ (keine externen Bibliotheken) und mit
-     Schutzabfragen versehen, falls ein Browser sie nicht unterstuetzt.
+     Alle rein browser-nativ, mit Schutzabfragen fuer aeltere Browser.
      ----------------------------------------------------------------------- */
 
-  /* --- 11a) SPRACHAUSGABE (Web Speech API / SpeechSynthesis) --- */
+  /* --- 11a) SPRACHAUSGABE (Web Speech API) --- */
 
-  /**
-   * Liest einen Text laut vor. Sprache: Deutsch (de-DE).
-   * window.speechSynthesis ist in modernen Browsern verfuegbar; fehlt es,
-   * passiert einfach nichts (kein Fehler).
-   */
+  /** Liest einen deutschen Text vor (falls der Browser es unterstuetzt). */
   function sprich(text) {
     if (!("speechSynthesis" in window)) { return; }
-    // Eventuell laufende Ausgabe stoppen, damit nichts uebereinander spricht.
-    window.speechSynthesis.cancel();
+    window.speechSynthesis.cancel(); // laufende Ausgabe stoppen
     var aeusserung = new SpeechSynthesisUtterance(text);
     aeusserung.lang = "de-DE";
-    aeusserung.rate = 0.9;   // etwas langsamer – kindgerecht und deutlich
+    aeusserung.rate = 0.9;           // etwas langsamer – kindgerecht
     window.speechSynthesis.speak(aeusserung);
   }
 
-  /**
-   * Wandelt eine Zielzeit in einen vorlesbaren deutschen Satz um.
-   * Beispiele: 480 -> "acht Uhr", 510 -> "acht Uhr dreissig",
-   *            727 -> "zwoelf Uhr sieben".
-   * Wir nutzen Zahlwoerter fuer 0..59, damit die Aussprache natuerlich klingt.
-   */
+  /** Wandelt eine Zielzeit in einen vorlesbaren Satz, z.B. "acht Uhr dreissig". */
   function zeitInWorten(minutenGesamt) {
     var stunde = Math.floor(minutenGesamt / 60);
     var minute = minutenGesamt % 60;
     var satz = zahlInWorten(stunde) + " Uhr";
-    if (minute > 0) {
-      satz += " " + zahlInWorten(minute);
-    }
+    if (minute > 0) { satz += " " + zahlInWorten(minute); }
     return satz;
   }
 
   /**
-   * Liefert das deutsche Zahlwort fuer 0..59 (ausreichend fuer Stunden/Minuten).
-   * Aufbau der deutschen Zahlen 21..99: Einer + "und" + Zehner
-   * (z.B. 21 = "einundzwanzig"). Diese Logik bilden wir hier nach.
+   * Deutsches Zahlwort fuer 0..59.
+   * Deutsche Zahlen 21..59: Einer + "und" + Zehner (21 = "einundzwanzig").
    */
   function zahlInWorten(n) {
     var einer = ["null", "ein", "zwei", "drei", "vier", "fuenf", "sechs",
@@ -636,77 +628,56 @@
                  "vierzehn", "fuenfzehn", "sechzehn", "siebzehn", "achtzehn",
                  "neunzehn"];
     var zehner = ["", "", "zwanzig", "dreissig", "vierzig", "fuenfzig"];
-
-    if (n < 20) { return einer[n]; }            // 0..19 direkt aus der Liste
-    var z = Math.floor(n / 10);                 // Zehnerstelle
-    var e = n % 10;                             // Einerstelle
-    if (e === 0) { return zehner[z]; }          // glatte Zehner: 20,30,40,50
-    // z.B. 7 + "und" + "zwanzig" = "siebenundzwanzig"
+    if (n < 20) { return einer[n]; }
+    var z = Math.floor(n / 10), e = n % 10;
+    if (e === 0) { return zehner[z]; }
     return einer[e] + "und" + zehner[z];
   }
 
 
   /* --- 11b) SOUNDEFFEKTE (Web Audio API) --- */
 
-  // Der AudioContext wird erst bei der ersten Nutzer-Interaktion erzeugt.
-  // Hintergrund: Browser blockieren automatisches Abspielen von Ton, bis der
-  // Nutzer aktiv etwas angeklickt/angetippt hat (Autoplay-Policy).
+  // Erst bei der ersten Nutzer-Interaktion erzeugen (Autoplay-Policy).
   var audioContext = null;
 
   function holeAudioContext() {
     if (audioContext === null) {
-      // webkitAudioContext als Fallback fuer aeltere Safari-Versionen.
       var AudioKlasse = window.AudioContext || window.webkitAudioContext;
       if (AudioKlasse) { audioContext = new AudioKlasse(); }
     }
-    // Falls der Kontext (z.B. nach Tab-Wechsel) pausiert wurde, fortsetzen.
-    if (audioContext && audioContext.state === "suspended") {
-      audioContext.resume();
-    }
+    if (audioContext && audioContext.state === "suspended") { audioContext.resume(); }
     return audioContext;
   }
 
   /**
-   * Spielt einen kurzen Ton-Effekt. "typ" ist "erfolg" oder "fehler".
-   *
-   * Funktionsweise (Web Audio):
-   *   - Ein OscillatorNode erzeugt eine reine Tonfrequenz (Sinuswelle).
-   *   - Ein GainNode regelt die Lautstaerke; wir lassen den Ton sanft
-   *     ausklingen (Fade-out), damit nichts hart abbricht.
-   *   - Bei "erfolg" spielen wir einen aufsteigenden Dreiklang (froehlich),
-   *     bei "fehler" einen einzelnen tiefen, weichen Ton (kein "Buzzer").
+   * Spielt einen kurzen Ton. "erfolg" = froehlicher aufsteigender Dreiklang,
+   * "fehler" = einzelner sanfter tiefer Ton (kein harter "Buzzer").
+   * Erzeugt mit Oszillator + Lautstaerke-Huellkurve (Fade-out).
    */
   function spielKlang(typ) {
     var ctx = holeAudioContext();
-    if (!ctx) { return; } // Browser ohne Web Audio: lautlos weiterspielen
+    if (!ctx) { return; }
 
-    // Drei froehliche, aufsteigende Toene (C5, E5, G5) fuer den Erfolg.
-    var erfolgsToene = [523.25, 659.25, 783.99];
-    // Ein tiefer, sanfter Ton fuer den freundlichen Fehlerhinweis.
-    var fehlerToene  = [196.00];
-
+    var erfolgsToene = [523.25, 659.25, 783.99]; // C5, E5, G5
+    var fehlerToene  = [196.00];                  // tiefes G3
     var toene = (typ === "erfolg") ? erfolgsToene : fehlerToene;
 
     toene.forEach(function (frequenz, index) {
-      var oszillator = ctx.createOscillator();
+      var oszillator  = ctx.createOscillator();
       var verstaerker = ctx.createGain();
 
       oszillator.type = (typ === "erfolg") ? "triangle" : "sine";
       oszillator.frequency.value = frequenz;
 
-      // Startzeitpunkt: die Erfolgs-Toene leicht versetzt (Arpeggio-Effekt).
-      var start = ctx.currentTime + index * 0.12;
+      var start = ctx.currentTime + index * 0.12; // Arpeggio-Versatz
       var dauer = 0.22;
 
-      // Lautstaerke-Verlauf: schnell an, dann sanft ausklingen.
       verstaerker.gain.setValueAtTime(0.0001, start);
       verstaerker.gain.exponentialRampToValueAtTime(0.25, start + 0.02);
       verstaerker.gain.exponentialRampToValueAtTime(0.0001, start + dauer);
 
-      // Signalkette verbinden: Oszillator -> Verstaerker -> Lautsprecher.
       oszillator.connect(verstaerker);
       verstaerker.connect(ctx.destination);
-
       oszillator.start(start);
       oszillator.stop(start + dauer);
     });
@@ -715,54 +686,64 @@
 
   /* --- 11c) SPEICHERN / LADEN (localStorage) --- */
 
-  /**
-   * Speichert die relevanten Werte (Level, Punkte, Rekord) im Browser.
-   * try/catch schuetzt vor Fehlern, falls localStorage deaktiviert ist
-   * (z.B. strenge Privatsphaere-Einstellungen oder Inkognito-Modus).
-   */
+  /** Speichert Level, Punkte und Rekord (try/catch schuetzt vor Blockaden). */
   function speichereStand() {
     try {
-      var daten = {
-        level:  state.level,
-        punkte: state.punkte,
-        rekord: state.rekord
-      };
-      window.localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify(daten));
-    } catch (fehler) {
-      // Speichern ist optional – das Spiel laeuft auch ohne Persistenz weiter.
-    }
+      window.localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify({
+        level: state.level, punkte: state.punkte, rekord: state.rekord
+      }));
+    } catch (fehler) { /* Persistenz ist optional */ }
   }
 
-  /**
-   * Laedt einen zuvor gespeicherten Stand (falls vorhanden) in den State.
-   */
+  /** Laedt einen gespeicherten Stand (falls vorhanden) vorsichtig in den State. */
   function ladeStand() {
     try {
       var roh = window.localStorage.getItem(SPEICHER_SCHLUESSEL);
       if (!roh) { return; }
       var daten = JSON.parse(roh);
-
-      // Werte vorsichtig uebernehmen und auf gueltige Bereiche begrenzen.
       if (typeof daten.level  === "number") { state.level  = Math.max(1, Math.min(3, daten.level)); }
       if (typeof daten.punkte === "number") { state.punkte = Math.max(0, daten.punkte); }
       if (typeof daten.rekord === "number") { state.rekord = Math.max(0, daten.rekord); }
-
-      // Schrittweite passend zum geladenen Level setzen.
-      state.schrittweite = LEVEL_CONFIG[state.level].schritt;
-    } catch (fehler) {
-      // Beschaedigte/fehlende Daten ignorieren – mit Standardwerten starten.
-    }
+    } catch (fehler) { /* beschaedigte Daten ignorieren */ }
   }
 
 
   /* 12. -------------------------------------------------------------------
-     VERDRAHTUNG DER EVENTS + SPIELSTART
+     MOBIL-ERKENNUNG + EVENT-VERDRAHTUNG + SPIELSTART
      ----------------------------------------------------------------------- */
 
+  /**
+   * Erkennt Touch-/Handy-Nutzung und setzt entsprechende Klassen am <body>.
+   * Damit kann das Spiel gezielt mobil-optimiert reagieren (zusaetzlich zu den
+   * CSS-Media-Queries). "pointer: coarse" trifft Finger-/Touch-Bedienung,
+   * maxTouchPoints erkennt Touch-Hardware.
+   */
+  function erkenneGeraet() {
+    var istTouch = (window.matchMedia && window.matchMedia("(pointer: coarse)").matches)
+                || ("ontouchstart" in window)
+                || (navigator.maxTouchPoints > 0);
+    // Als "Handy" werten wir schmale Bildschirme.
+    var istHandy = window.matchMedia && window.matchMedia("(max-width: 560px)").matches;
+
+    document.body.classList.toggle("ist-touch", !!istTouch);
+    document.body.classList.toggle("ist-handy", !!istHandy);
+  }
+
   function verbindeEvents() {
-    // --- Steuerungs-Buttons ---
-    el.minus.addEventListener("click", function () { aendereZeit(-1); });
-    el.plus.addEventListener("click",  function () { aendereZeit(+1); });
+    // --- Stepper-Knoepfe (Stunde/Minute getrennt) ---
+    el.stepperBtns.forEach(function (button) {
+      button.addEventListener("click", function () {
+        aendereKomponente(button.dataset.modus, Number(button.dataset.richtung));
+      });
+    });
+
+    // --- Tippen auf den Wert-Bereich aktiviert den jeweiligen Modus ---
+    // (so legt man fest, welcher Zeiger beim Ziehen am Zifferblatt reagiert)
+    el.stepperMitte.forEach(function (mitte) {
+      mitte.addEventListener("click", function () { setzeModus(mitte.dataset.modus); });
+    });
+
+    // --- Abfahrt-Pruefung ---
     el.abfahrt.addEventListener("click", pruefeAbfahrt);
 
     // --- Vorlese-Button (Sprachausgabe) ---
@@ -770,53 +751,47 @@
       sprich("Die Abfahrtszeit ist " + zeitInWorten(state.zielMinuten));
     });
 
-    // --- Level-Auswahl-Buttons ---
+    // --- Level-Auswahl ---
     el.levelButtons.forEach(function (button) {
-      button.addEventListener("click", function () {
-        setzeLevel(Number(button.dataset.level));
-      });
+      button.addEventListener("click", function () { setzeLevel(Number(button.dataset.level)); });
     });
 
-    // --- Drag & Drop der Zeiger (Pointer Events: Maus + Touch zugleich) ---
+    // --- Drag & Drop am Zifferblatt (Maus + Touch via Pointer Events) ---
     el.svg.addEventListener("pointerdown", aufZeigerDruck);
     el.svg.addEventListener("pointermove", aufZeigerBewegung);
-    // pointerup / pointercancel beenden das Ziehen zuverlaessig.
     el.svg.addEventListener("pointerup", aufZeigerLoslassen);
     el.svg.addEventListener("pointercancel", aufZeigerLoslassen);
 
-    // --- Tastatur-Komfort (optional, fuer Maus/Laptop-Nutzung) ---
-    // Pfeiltasten links/rechts = Zeit verstellen, Leertaste/Enter = Abfahrt.
+    // --- Tastatur-Komfort (fuer Laptop/Desktop) ---
     document.addEventListener("keydown", function (ereignis) {
-      if (ereignis.key === "ArrowLeft")  { aendereZeit(-1); }
-      if (ereignis.key === "ArrowRight") { aendereZeit(+1); }
-      if (ereignis.key === "Enter" || ereignis.key === " ") {
-        // Nur ausloesen, wenn nicht gerade ein Button den Fokus hat
-        // (sonst wuerde der Klick doppelt zaehlen).
-        if (document.activeElement === document.body) {
-          ereignis.preventDefault();
-          pruefeAbfahrt();
-        }
+      // Links/Rechts wechselt den aktiven Steller, Hoch/Runter veraendert ihn.
+      if (ereignis.key === "ArrowLeft")  { setzeModus("stunde"); }
+      if (ereignis.key === "ArrowRight") { setzeModus("minute"); }
+      if (ereignis.key === "ArrowUp")    { aendereKomponente(state.aktiverModus, +1); }
+      if (ereignis.key === "ArrowDown")  { aendereKomponente(state.aktiverModus, -1); }
+      if ((ereignis.key === "Enter" || ereignis.key === " ") &&
+          document.activeElement === document.body) {
+        ereignis.preventDefault();
+        pruefeAbfahrt();
       }
     });
+
+    // Bei Bildschirmdrehung/Groessenaenderung die Geraete-Erkennung auffrischen.
+    window.addEventListener("resize", erkenneGeraet);
   }
 
-  /**
-   * Startpunkt des Spiels: einmalig beim Laden ausfuehren.
-   */
+  /** Startpunkt: einmalig beim Laden. */
   function start() {
+    erkenneGeraet();        // Touch/Handy erkennen
     zeichneZifferblatt();   // SVG-Zifferblatt aufbauen
     ladeStand();            // ggf. gespeicherten Fortschritt holen
-    verbindeEvents();       // alle Interaktionen aktivieren
+    verbindeEvents();       // Interaktionen aktivieren
 
-    // Schrittweite passend zum (geladenen) Level setzen und alles anzeigen.
-    state.schrittweite = LEVEL_CONFIG[state.level].schritt;
     aktualisiereStatus();
-    neueAufgabe();          // erste Aufgabe erzeugen + Uhr rendern
+    neueAufgabe();          // erste Aufgabe + Uhr rendern
   }
 
-  // Das Skript steht am Ende des <body>, daher ist das DOM bereits geladen.
-  // Zur Sicherheit warten wir trotzdem auf "DOMContentLoaded", falls die Datei
-  // einmal anders eingebunden wird.
+  // DOM ist am Skript-Ende geladen; zur Sicherheit dennoch absichern.
   if (document.readyState === "loading") {
     document.addEventListener("DOMContentLoaded", start);
   } else {
