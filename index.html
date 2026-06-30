@@ -4,17 +4,10 @@
   Uhrzeit-Uhu: Der Zeitreisen-Express
   ----------------------------------------------------------------------------
   Kindgerechtes Lernspiel (Grundschule) zum Lesen/Einstellen der Uhrzeit.
+  Struktur (dieses File) / Aussehen (style.css) / Logik (game.js) getrennt.
 
-  Struktur (dieses File) / Aussehen (style.css) / Logik (game.js) sind getrennt.
-
-  BEDIENUNG (fuer Erstklaesser, viele Symbole, wenig Text):
-  - Man tippt EINEN Zeiger an -> er wird ORANGE (= ausgewaehlt).
-  - Dann zieht man ihn am Zifferblatt auf die richtige Stelle.
-      * grosser Zeiger (Minute): rastet in 5-Minuten-Schritten ein
-      * kleiner Zeiger (Stunde): gleitet wie in echt zwischen die Stunden
-        (z.B. bei "halb" steht er zwischen zwei Zahlen)
-  - Die Abfahrtszeit kann man sich per 🔊 vorlesen lassen.
-  - Stimmt die Zeit, faehrt der kleine Zug am Bahnhof los.
+  Bedienung: einen Zeiger ANTIPPEN (wird orange) und am Zifferblatt ZIEHEN.
+  Einstellungen (Schwierigkeit, 12/24h, Ziffernblatt) ueber das Zahnrad ⚙️.
   ============================================================================
 -->
 <html lang="de">
@@ -22,9 +15,17 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Lernspiel zum Uhrzeit-Lesen fuer Kinder im Grundschulalter.">
-  <meta name="theme-color" content="#2a6fdb">
+  <meta name="theme-color" content="#3b3f8f">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Uhrzeit-Uhu: Der Zeitreisen-Express</title>
+
+  <!-- Kindgerechte, gut lesbare, serifenlose Schriften (mit System-Fallback,
+       falls keine Internetverbindung besteht). Baloo 2 = runde Anzeige-Schrift,
+       Nunito = klare Lese-Schrift. -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="style.css">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
 </head>
@@ -32,7 +33,8 @@
 <body>
 
   <!-- ====================================================================
-       1) TOP-BAR (kompakt, symbolisch): Owl, Punkte ⭐, Rekord 🏆, Level 1/2/3
+       1) TOP-BAR: Owl, Punkte ⭐ + Rekord 🏆 (antippbar = Erklaerung),
+            Schwierigkeits-Anzeige und Zahnrad ⚙️ (Einstellungen).
        ==================================================================== -->
   <header class="top-bar">
     <div class="marke">
@@ -40,33 +42,33 @@
       <span class="marke-text">Uhrzeit-Uhu</span>
     </div>
 
-    <!-- Punkte und Rekord als Symbol + grosse Zahl (ohne viel Text) -->
     <div class="status">
-      <div class="stat" title="Punkte">
+      <!-- antippbar -> kleines Erklaer-Fenster (Popover) -->
+      <button type="button" class="stat" id="stat-punkte" data-info="punkte"
+              aria-label="Was bedeuten die Punkte?">
         <span class="stat-icon" aria-hidden="true">⭐</span>
         <span class="stat-wert" id="anzeige-punkte">0</span>
-      </div>
-      <div class="stat" title="Rekord">
+      </button>
+      <button type="button" class="stat" id="stat-rekord" data-info="rekord"
+              aria-label="Was bedeutet der Rekord?">
         <span class="stat-icon" aria-hidden="true">🏆</span>
         <span class="stat-wert" id="anzeige-rekord">0</span>
-      </div>
+      </button>
     </div>
 
-    <!-- Level-Auswahl: aktive Stufe ist hervorgehoben (zeigt zugleich das Level) -->
-    <nav class="level-auswahl" aria-label="Schwierigkeit waehlen">
-      <button type="button" class="level-button" data-level="1" aria-label="Stufe 1">1</button>
-      <button type="button" class="level-button" data-level="2" aria-label="Stufe 2">2</button>
-      <button type="button" class="level-button" data-level="3" aria-label="Stufe 3">3</button>
-    </nav>
+    <button type="button" class="zahnrad" id="button-einstellungen"
+            aria-label="Einstellungen öffnen">
+      <span class="schwierigkeit-punkt" id="schwierigkeit-punkt" aria-hidden="true">🟢</span>
+      <span class="zahnrad-icon" aria-hidden="true">⚙️</span>
+    </button>
   </header>
 
 
   <!-- ====================================================================
-       2) MAIN: Abfahrtszeit (gross, antippbar zum Vorlesen) + grosse Uhr
+       2) MAIN: Abfahrtszeit (gross, antippbar = vorlesen) + grosse Uhr
        ==================================================================== -->
   <main class="haupt-bereich">
 
-    <!-- Abfahrtszeit: die ganze Anzeige ist ein Button -> tippen = vorlesen -->
     <button type="button" class="ziel-anzeige" id="button-vorlesen"
             aria-label="Abfahrtszeit anhören">
       <span class="ziel-label">🚂 ABFAHRT</span>
@@ -74,35 +76,25 @@
       <span class="ziel-hoeren">🔊 Hören</span>
     </button>
 
-    <!-- Die interaktive analoge Uhr -->
     <section class="uhr-bereich" aria-label="Analoge Uhr">
       <svg id="uhr-svg" class="uhr-svg" viewBox="0 0 200 200" role="img"
            aria-label="Analoge Uhr zum Einstellen der Zeit">
-
-        <!-- Unsichtbare Flaeche, damit Beruehrungen ueberall auf der Uhr zaehlen -->
+        <!-- Unsichtbare Flaeche: Beruehrungen zaehlen ueberall auf der Uhr. -->
         <rect x="0" y="0" width="200" height="200" fill="transparent"></rect>
-
-        <circle cx="100" cy="100" r="96" class="uhr-rand"></circle>
+        <circle cx="100" cy="100" r="97" class="uhr-rand"></circle>
         <circle cx="100" cy="100" r="90" class="uhr-blatt"></circle>
 
-        <!-- Stundenmarkierungen + Ziffern 1..12 (per JavaScript erzeugt) -->
+        <!-- Zifferblatt-Inhalt (Striche/Zahlen) wird per JS erzeugt – je nach
+             gewaehltem Ziffernblatt im Einstellungsmenue. -->
         <g id="zifferblatt-markierungen"></g>
 
-        <!--
-          Die ZEIGER. Antippen waehlt einen aus (er wird per "aktiv"-Klasse
-          orange). Der ausgewaehlte Zeiger wird per JS nach oben sortiert,
-          damit man ihn auch bei Ueberdeckung (z.B. 12:00) gut sieht.
-        -->
         <line id="zeiger-stunde" class="zeiger zeiger-stunde"
               x1="100" y1="100" x2="100" y2="54"></line>
         <line id="zeiger-minute" class="zeiger zeiger-minute"
               x1="100" y1="100" x2="100" y2="28"></line>
-
-        <!-- Mittelpunkt-Kappe (bleibt immer ganz oben) -->
         <circle id="uhr-kappe" cx="100" cy="100" r="7" class="uhr-mitte"></circle>
       </svg>
 
-      <!-- EIN gemeinsamer Hinweis: zeigt den aktiven Zeiger bzw. das Feedback -->
       <p class="hinweis" id="hinweis-text" role="status" aria-live="polite">
         👆 Tippe einen Zeiger an
       </p>
@@ -111,21 +103,104 @@
 
 
   <!-- ====================================================================
-       3) BOTTOM: kleiner Bahnhof mit Zug + grosser "Abfahrt!"-Button
+       3) BOTTOM: Bahnhof mit Zug (faehrt nach links los) + Abfahrt-Button
        ==================================================================== -->
   <footer class="steuerung">
-
-    <!-- Bahnhof-Szene: der Zug steht am Gleis und faehrt bei Erfolg los. -->
     <div class="bahnhof" aria-hidden="true">
-      <span class="bahnhof-haus">🚉</span>
+      <!-- Lok faehrt voran nach LINKS, Waggons hinten rechts. -->
       <span class="zug" id="zug">🚂🚃🚃</span>
     </div>
 
-    <!-- Pruef-Button: gruen + Zug = "losfahren" -->
     <button type="button" class="abfahrt-button" id="button-abfahrt">
       🚂 Abfahrt!
     </button>
   </footer>
+
+
+  <!-- ====================================================================
+       Kleines Erklaer-Fenster (Popover) fuer ⭐ / 🏆
+       ==================================================================== -->
+  <div class="popover" id="popover" role="status" hidden></div>
+
+
+  <!-- ====================================================================
+       EINSTELLUNGS-MENUE (ueber ⚙️). Standardmaessig geschlossen.
+       ==================================================================== -->
+  <div class="modal-overlay" id="einstellungen" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-label="Einstellungen">
+      <button type="button" class="modal-schliessen" id="einstellungen-zu"
+              aria-label="Einstellungen schließen">✕</button>
+      <h2 class="modal-titel">⚙️ Einstellungen</h2>
+
+      <!-- Schwierigkeit -->
+      <section class="opt-gruppe">
+        <h3 class="opt-titel">🎚️ Schwierigkeit</h3>
+        <div class="opt-reihe">
+          <button type="button" class="opt-karte" data-setting="level" data-wert="1">
+            <span class="opt-icon">🟢</span>
+            <span class="opt-name">Leicht</span>
+            <span class="opt-text">Volle &amp; halbe Stunden</span>
+          </button>
+          <button type="button" class="opt-karte" data-setting="level" data-wert="2">
+            <span class="opt-icon">🟡</span>
+            <span class="opt-name">Mittel</span>
+            <span class="opt-text">Auch Viertelstunden</span>
+          </button>
+          <button type="button" class="opt-karte" data-setting="level" data-wert="3">
+            <span class="opt-icon">🔴</span>
+            <span class="opt-name">Schwer</span>
+            <span class="opt-text">Alle 5 Minuten</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Zeitformat 12 / 24 -->
+      <section class="opt-gruppe">
+        <h3 class="opt-titel">🕘 Zeitformat</h3>
+        <div class="opt-reihe">
+          <button type="button" class="opt-karte" data-setting="zeitformat" data-wert="12">
+            <span class="opt-icon">☀️</span>
+            <span class="opt-name">12 Stunden</span>
+            <span class="opt-text">1 bis 12 Uhr</span>
+          </button>
+          <button type="button" class="opt-karte" data-setting="zeitformat" data-wert="24">
+            <span class="opt-icon">🌙</span>
+            <span class="opt-name">24 Stunden</span>
+            <span class="opt-text">0 bis 24 Uhr</span>
+          </button>
+        </div>
+      </section>
+
+      <!-- Ziffernblatt -->
+      <section class="opt-gruppe">
+        <h3 class="opt-titel">🕰️ Ziffernblatt</h3>
+        <div class="opt-reihe opt-reihe-vier">
+          <button type="button" class="opt-karte" data-setting="blatt" data-wert="schlicht">
+            <span class="opt-icon">⚪</span>
+            <span class="opt-name">Schlicht</span>
+            <span class="opt-text">nur Striche</span>
+          </button>
+          <button type="button" class="opt-karte" data-setting="blatt" data-wert="zahlen">
+            <span class="opt-icon">🔢</span>
+            <span class="opt-name">Zahlen</span>
+            <span class="opt-text">1–12</span>
+          </button>
+          <button type="button" class="opt-karte" data-setting="blatt" data-wert="minuten">
+            <span class="opt-icon">⏱️</span>
+            <span class="opt-name">Minuten</span>
+            <span class="opt-text">mit Minutenstrichen</span>
+          </button>
+          <button type="button" class="opt-karte" data-setting="blatt" data-wert="zwanzigvier">
+            <span class="opt-icon">🌍</span>
+            <span class="opt-name">24 Stunden</span>
+            <span class="opt-text">13–24 innen</span>
+          </button>
+        </div>
+      </section>
+
+      <button type="button" class="modal-fertig" id="einstellungen-fertig">Fertig 👍</button>
+    </div>
+  </div>
 
   <script src="game.js"></script>
 </body>
