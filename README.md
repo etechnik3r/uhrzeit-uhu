@@ -32,8 +32,13 @@ Abfahrtszeit eingestellt werden.
   - **5 Ziffernblätter**: Schlicht / Zahlen / Minutenstriche / **Minuten-Zahlen
     (5, 10, 15 …)** / 24‑Stunden‑Ring,
   - **Zeiger-Stil**: Standard / Dünn / Dick / Pfeil (mit Spitze),
-  - **Punkte & Rekord zurücksetzen**.
-- **⭐ Punkte / 🏆 Rekord** mit Erklär-Popup beim Antippen.
+  - **Pokale zurücksetzen**.
+- **🏆 Pokale**: ein Zähler, der bei jeder richtigen Abfahrt hochzählt
+  (mit Erklär-Popup beim Antippen).
+- **Klick auf den Uhu 🦉** zeigt Spielname und Studio.
+- **Mechanische Zeiger-Logik**: Dreht man den Minutenzeiger über die 12,
+  wandert der Stundenzeiger mit (er springt nicht zurück) – wie bei einer
+  echten Uhr; drei volle Umdrehungen ergeben drei Stunden.
 - **12-Stunden-Uhr ohne AM/PM:** Eine Zielzeit wie `18:00` wird einfach über die
   `6`-Uhr-Stellung eingestellt – die Zeiger-Stellung zählt (Vergleich auf
   12-Stunden-Basis), kein Vormittag/Nachmittag-Schalter nötig.

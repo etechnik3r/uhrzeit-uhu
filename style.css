@@ -99,7 +99,20 @@ body {
   box-shadow: 0 4px 18px rgba(36, 64, 130, 0.12);
 }
 
-.marke { display: flex; align-items: center; gap: 8px; }
+.marke {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  border-radius: 14px;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+  transition: transform 0.1s ease;
+}
+.marke:active { transform: scale(0.94); }
 .marke-emoji { font-size: 1.9rem; }
 .marke-text {
   font-family: var(--font-display);
@@ -360,6 +373,22 @@ body {
   box-shadow: var(--sh-soft);
 }
 .popover[hidden] { display: none; }
+/* About-Popover (Klick auf den Uhu): Spielname + Studio */
+.popover .about-titel {
+  display: block;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+.popover .about-unter { display: block; color: var(--muted); margin-bottom: 6px; }
+.popover .about-studio {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 800;
+  color: var(--cta-deep);
+  letter-spacing: 0.5px;
+}
 
 
 /* 7) EINSTELLUNGS-SEITE (Vollbild-Overlay) --------------------------------- */

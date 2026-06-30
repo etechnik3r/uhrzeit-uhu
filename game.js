@@ -53,10 +53,10 @@
     aktuelleMinuten: 12 * 60,
     zielMinuten:     8 * 60,
     level:           1,
-    punkte:          0,
-    rekord:          0,
+    pokale:          0,   // gesammelte Pokale (jede richtige Abfahrt = 1)
     aktiverZeiger:   "stunde",
     istAmZiehen:     false,
+    letzteZiehMinute: 0,  // fuer die mechanische Mitnahme der Stunde beim Ziehen
 
     zeitformat: "24",
     blatt:      "zahlen",
@@ -66,10 +66,9 @@
 
   /* 3. HTML-REFERENZEN ---------------------------------------------------- */
   var el = {
-    punkte: document.getElementById("anzeige-punkte"),
-    rekord: document.getElementById("anzeige-rekord"),
-    statPunkte: document.getElementById("stat-punkte"),
-    statRekord: document.getElementById("stat-rekord"),
+    pokale: document.getElementById("anzeige-pokale"),
+    statPokale: document.getElementById("stat-pokale"),
+    about: document.getElementById("button-about"),
     zahnrad: document.getElementById("button-einstellungen"),
 
     zielZeit: document.getElementById("anzeige-ziel"),
@@ -223,8 +222,7 @@
   }
 
   function aktualisiereStatus() {
-    el.punkte.textContent = state.punkte;
-    el.rekord.textContent = state.rekord;
+    el.pokale.textContent = state.pokale;
     markiereAktiveOptionen();
   }
 
@@ -329,7 +327,20 @@
     var stunde = aktuelleStunde();
     var minute = aktuelleMinute();
     if (state.aktiverZeiger === "minute") {
-      minute = (Math.round(winkel / (6 * MINUTEN_RASTER)) * MINUTEN_RASTER) % 60;
+      var rohMinute = (Math.round(winkel / (6 * MINUTEN_RASTER)) * MINUTEN_RASTER) % 60;
+
+      // MECHANISCHE MITNAHME (wie eine echte Uhr):
+      // Ueberquert der grosse Zeiger beim Drehen die 12, wandert die Stunde mit.
+      // Wir erkennen den Sprung am Vorzeichen der Minuten-Differenz zum letzten
+      // Schritt: 55 -> 0 (delta stark negativ) = VORWAERTS  -> Stunde + 1.
+      //          0 -> 55 (delta stark positiv) = RUECKWAERTS -> Stunde - 1.
+      // So springt der Stundenzeiger nicht zurueck, sondern laeuft weiter (drei
+      // volle Kreise von 0:00 ergeben 3:00).
+      var delta = rohMinute - state.letzteZiehMinute;
+      if (delta < -30) { stunde += 1; }
+      else if (delta > 30) { stunde -= 1; }
+      state.letzteZiehMinute = rohMinute;
+      minute = rohMinute;
     } else {
       var haelfte = stunde >= 12 ? 12 : 0;
       var h12 = ((Math.round((winkel - minute * 0.5) / 30) % 12) + 12) % 12;
@@ -342,6 +353,7 @@
   function aufZeigerDruck(ereignis) {
     ereignis.preventDefault();
     waehleZeiger(zeigerBeiDruck(ereignis.clientX, ereignis.clientY));
+    state.letzteZiehMinute = aktuelleMinute();   // Ausgangswert fuer mechanische Mitnahme
     state.istAmZiehen = true;
     el.svg.classList.add("wird-gezogen");
     if (el.svg.setPointerCapture) {
@@ -368,8 +380,7 @@
    */
   function pruefeAbfahrt() {
     if ((state.aktuelleMinuten % 720) === (state.zielMinuten % 720)) {
-      state.punkte += 1;
-      if (state.punkte > state.rekord) { state.rekord = state.punkte; }
+      state.pokale += 1;   // ein Pokal pro richtiger Abfahrt
 
       zeigeHinweis("✅ Super! Der Zug fährt ab! 🎉", "erfolg");
       spielKlang("erfolg");
@@ -454,7 +465,7 @@
   function speichereStand() {
     try {
       window.localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify({
-        level: state.level, punkte: state.punkte, rekord: state.rekord,
+        level: state.level, pokale: state.pokale,
         zeitformat: state.zeitformat, blatt: state.blatt, zeiger: state.zeiger
       }));
     } catch (e) { /* optional */ }
@@ -465,8 +476,9 @@
       if (!roh) { return; }
       var d = JSON.parse(roh);
       if (typeof d.level  === "number") { state.level  = Math.max(1, Math.min(3, d.level)); }
-      if (typeof d.punkte === "number") { state.punkte = Math.max(0, d.punkte); }
-      if (typeof d.rekord === "number") { state.rekord = Math.max(0, d.rekord); }
+      // Pokale (frueher hiess das Feld "punkte" – beides akzeptieren).
+      if (typeof d.pokale === "number") { state.pokale = Math.max(0, d.pokale); }
+      else if (typeof d.punkte === "number") { state.pokale = Math.max(0, d.punkte); }
       if (d.zeitformat === "12" || d.zeitformat === "24") { state.zeitformat = d.zeitformat; }
       if (["schlicht", "zahlen", "minuten", "minutenzahlen", "zwanzigvier"].indexOf(d.blatt) >= 0) { state.blatt = d.blatt; }
       if (["standard", "duenn", "dick", "pfeil"].indexOf(d.zeiger) >= 0) { state.zeiger = d.zeiger; }
@@ -476,24 +488,29 @@
 
   /* 11. EINSTELLUNGSMENUE + ERKLAER-POPOVER ------------------------------ */
 
-  // Texte fuer die kleinen Erklaer-Fenster (kindgerecht, kurz).
-  var INFO_TEXTE = {
-    punkte: "⭐ Punkte: So viele Abfahrten hast du schon richtig geschafft!",
-    rekord: "🏆 Rekord: Deine längste Erfolgs-Serie. Schaffst du mehr?"
-  };
+  // Erklaer-Text fuer die Pokale (kindgerecht, kurz).
+  var INFO_POKALE = "🏆 Pokale: So oft hast du den Zug schon richtig auf die Reise geschickt! Jede richtige Abfahrt gibt einen Pokal.";
 
-  /** Zeigt ein kleines Erklaer-Fenster unter dem angetippten Element. */
-  function zeigePopover(text, ankerEl) {
-    el.popover.textContent = text;
+  // Inhalt des "Über das Spiel"-Fensters (Klick auf den Uhu).
+  var ABOUT_HTML =
+    '<span class="about-titel">🦉 Uhrzeit-Uhu</span>' +
+    '<span class="about-unter">Der Zeitreisen-Express</span>' +
+    '<span class="about-studio">by JONFIE STUDIOS</span>';
+
+  /** Positioniert das (bereits gefuellte) Popover unter dem Anker-Element. */
+  function platzierePopover(ankerEl) {
     el.popover.hidden = false;
     var r = ankerEl.getBoundingClientRect();
-    // Mittig unter dem Anker, aber innerhalb des Fensters halten.
     var p = el.popover.getBoundingClientRect();
     var left = r.left + r.width / 2 - p.width / 2;
     left = Math.max(8, Math.min(left, window.innerWidth - p.width - 8));
     el.popover.style.left = left + "px";
     el.popover.style.top = (r.bottom + 8) + "px";
   }
+  /** Reines Text-Popover (z.B. Pokale-Erklaerung). */
+  function zeigeInfo(text, ankerEl) { el.popover.textContent = text; platzierePopover(ankerEl); }
+  /** Reichhaltiges Popover (Spielname + Studio). */
+  function zeigeAbout(ankerEl) { el.popover.innerHTML = ABOUT_HTML; platzierePopover(ankerEl); }
   function versteckePopover() { el.popover.hidden = true; }
 
   /** Hebt die aktuell gewaehlten Optionen im Menue hervor. */
@@ -532,11 +549,10 @@
     markiereAktiveOptionen();
   }
 
-  /** Setzt Punkte und Rekord zurueck (mit kurzer Rueckfrage). */
+  /** Setzt die gesammelten Pokale zurueck (mit kurzer Rueckfrage). */
   function setzeFortschrittZurueck() {
-    if (!window.confirm("Wirklich Punkte und Rekord auf 0 zurücksetzen?")) { return; }
-    state.punkte = 0;
-    state.rekord = 0;
+    if (!window.confirm("Wirklich alle Pokale auf 0 zurücksetzen?")) { return; }
+    state.pokale = 0;
     aktualisiereStatus();
     speichereStand();
   }
@@ -565,8 +581,8 @@
     el.svg.addEventListener("pointercancel", aufZeigerLoslassen);
 
     // Erklaer-Popover fuer ⭐ / 🏆. Anzeige beim Klick.
-    el.statPunkte.addEventListener("click", function () { zeigePopover(INFO_TEXTE.punkte, el.statPunkte); });
-    el.statRekord.addEventListener("click", function () { zeigePopover(INFO_TEXTE.rekord, el.statRekord); });
+    el.statPokale.addEventListener("click", function () { zeigeInfo(INFO_POKALE, el.statPokale); });
+    el.about.addEventListener("click", function () { zeigeAbout(el.about); });
     // Jede weitere Beruehrung (auch auf der Uhr) schliesst das Popover wieder.
     // pointerdown statt click, weil Beruehrungen auf der Uhr per preventDefault
     // kein click-Event erzeugen. Beim Antippen der Stat-Buttons feuert pointerdown

@@ -27,7 +27,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;600;700;800&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="style.css?v=8">
+  <link rel="stylesheet" href="style.css?v=9">
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
 </head>
 
@@ -35,18 +35,15 @@
 
   <!-- 1) TOP-BAR -->
   <header class="top-bar">
-    <div class="marke">
+    <!-- Klick auf den Uhu zeigt Spielname + Studio -->
+    <button type="button" class="marke" id="button-about" aria-label="Über das Spiel">
       <span class="marke-emoji" aria-hidden="true">🦉</span>
       <span class="marke-text">Uhrzeit-Uhu</span>
-    </div>
+    </button>
     <div class="status">
-      <button type="button" class="stat" id="stat-punkte" aria-label="Was bedeuten die Sterne?">
-        <span class="stat-icon" aria-hidden="true">⭐</span>
-        <span class="stat-wert" id="anzeige-punkte">0</span>
-      </button>
-      <button type="button" class="stat" id="stat-rekord" aria-label="Was bedeutet der Pokal?">
+      <button type="button" class="stat" id="stat-pokale" aria-label="Was bedeuten die Pokale?">
         <span class="stat-icon" aria-hidden="true">🏆</span>
-        <span class="stat-wert" id="anzeige-rekord">0</span>
+        <span class="stat-wert" id="anzeige-pokale">0</span>
       </button>
     </div>
     <button type="button" class="menue-button" id="button-einstellungen" aria-label="Menü öffnen">
@@ -135,7 +132,7 @@
   </footer>
 
 
-  <!-- Erklaer-Popover fuer ⭐ / 🏆 -->
+  <!-- Kleines Popover: "Über das Spiel" (Uhu) bzw. Pokale-Erklaerung (🏆) -->
   <div class="popover" id="popover" role="status" hidden></div>
 
 
@@ -254,6 +251,6 @@
     </div>
   </div>
 
-  <script src="game.js?v=8"></script>
+  <script src="game.js?v=9"></script>
 </body>
 </html>
