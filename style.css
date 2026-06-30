@@ -148,8 +148,8 @@ body {
   flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 16px;
-  padding: 16px;
+  gap: 12px;
+  padding: 12px;
 }
 
 /* ---- Fahrplan-Karte ---- */
@@ -190,11 +190,16 @@ body {
 }
 
 .vorlese-button {
-  min-height: 48px;
+  min-height: 56px;
   width: 100%;
-  padding: 10px;
-  font: bold 1.05rem inherit;
+  padding: 8px 10px;
   font-family: inherit;
+  font-weight: bold;
+  /* Maximal grosse Schrift, die noch auf den Button passt: skaliert mit der
+     Breite (clamp) und bleibt in einer Zeile (nowrap). */
+  font-size: clamp(1.5rem, 7.5vw, 2.4rem);
+  white-space: nowrap;
+  line-height: 1.1;
   color: var(--farbe-text);
   background: var(--farbe-sonne);
   border: none;
@@ -223,9 +228,11 @@ body {
 }
 
 .uhr-svg {
-  /* Responsive Groesse: passt sich an die Bildschirmbreite an. */
-  width: min(86vw, 360px);
-  height: min(86vw, 360px);
+  /* Responsive Groesse: nimmt das KLEINERE aus Breite UND Hoehe, damit die
+     Uhr auf hohen schmalen Handys nicht den ganzen Platz frisst und die
+     Steller darunter sichtbar bleiben. */
+  width: min(82vw, 44vh, 360px);
+  height: min(82vw, 44vh, 360px);
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.25));
   /* touch-action: none ist ENTSCHEIDEND: verhindert, dass der Browser beim
      Ziehen der Zeiger die Seite scrollt oder zoomt. */
@@ -454,36 +461,76 @@ body {
   .uhr-svg       { width: min(46vw, 400px); height: min(46vw, 400px); }
 }
 
-/* (B) Kleine HANDYS hochkant: Platz sparen, damit alles ohne viel Scrollen passt. */
-@media (max-width: 400px) {
-  .top-bar { justify-content: center; }
-  .marke   { width: 100%; justify-content: center; }
-  .status-feld { min-width: 54px; padding: 4px 10px; }
+/* (B) HANDYS (hochkant, bis 600px): kompakt, damit Uhr UND Steller UND der
+   Abfahrt-Button gemeinsam auf den Bildschirm passen (ohne Scrollen). */
+@media (max-width: 600px) {
+  /* Kopfzeile schlank halten */
+  .top-bar { gap: 8px; padding: 8px 12px; }
+  .marke   { font-size: 1.3rem; }
+  .marke-emoji { font-size: 1.6rem; }
+  .status-feld { min-width: 50px; padding: 4px 10px; }
   .status-wert { font-size: 1.2rem; }
-  .level-button { padding: 6px 10px; font-size: 0.85rem; }
+  .level-button { min-height: 40px; padding: 5px 12px; font-size: 0.85rem; }
 
-  /* Dekorative Zug-Szene ausblenden – spart wertvolle Hoehe. */
+  /* Fahrplan-Karte kompakter */
+  .haupt-bereich { gap: 8px; padding: 8px; }
+  .fahrplan { padding: 10px 14px; }
+  .fahrplan-titel { display: none; }       /* "ABFAHRT" steht bereits darunter */
+  .ziel-anzeige { padding: 6px 8px; margin-bottom: 8px; }
+  .ziel-label { font-size: 0.75rem; }
+  .vorlese-button { min-height: 50px; }
+
+  /* Platzfresser ausblenden:
+     - dekorative Zug-Szene (rein schmueckend)
+     - "Eingestellt"-Anzeige (die Steller zeigen die Werte ohnehin) */
   .szene { display: none; }
-  .fahrplan-titel { font-size: 1.2rem; margin-bottom: 6px; }
+  .ist-anzeige { display: none; }
 
-  .stepper-wert { font-size: 1.9rem; }
-  .stepper-btn  { min-width: 60px; }
-  .abfahrt-button { font-size: 1.4rem; }
+  /* Uhr an die verfuegbare Hoehe anpassen (Hoehe begrenzt die Groesse). */
+  .uhr-bereich { gap: 4px; }
+  .uhr-svg { width: min(74vw, 34vh, 300px); height: min(74vw, 34vh, 300px); }
+  .zieh-hinweis { font-size: 0.8rem; }
+
+  /* Steller kompakt, aber weiterhin gut antippbar */
+  .einsteller { gap: 7px; margin-bottom: 7px; }
+  .stepper-zeile { padding: 4px; }
+  .stepper-label { font-size: 0.8rem; }
+  .stepper-wert { font-size: 1.6rem; }
+  .stepper-btn  { min-width: 64px; min-height: 54px; font-size: 1.8rem; }
+  .abfahrt-button { font-size: 1.35rem; min-height: 52px; }
+
+  /* Kopfzeile schlanker */
+  .steuerung { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); }
+  .hinweis { font-size: 1rem; margin-bottom: 6px; }
 }
 
-/* (C) Sehr NIEDRIGE Bildschirme (Handy quer): Uhr verkleinern. */
+/* (C) NIEDRIGERE Handys (z.B. mit eingeblendeter Browser-Leiste): noch enger,
+   damit Uhr + Steller + Abfahrt-Button gemeinsam sichtbar bleiben. */
+@media (max-width: 600px) and (max-height: 820px) {
+  .uhr-svg { width: min(68vw, 27vh, 270px); height: min(68vw, 27vh, 270px); }
+  .vorlese-button { min-height: 44px; font-size: clamp(1.3rem, 6.5vw, 2rem); }
+  .ziel-zeit { font-size: clamp(2.2rem, 8.5vw, 3.4rem); }
+  .stepper-btn { min-height: 48px; }
+  .stepper-wert { font-size: 1.5rem; }
+  .top-bar { padding: 5px 12px; }
+  .level-button { min-height: 38px; }
+  .zieh-hinweis { display: none; }   /* Hinweis steht auch in der Steller-Zeile */
+  .hinweis { margin-bottom: 4px; }
+}
+
+/* (D) Sehr NIEDRIGE Bildschirme (Handy quer): Uhr verkleinern, Deko weg. */
 @media (max-height: 560px) {
   .uhr-svg { width: min(42vh, 240px); height: min(42vh, 240px); }
-  .szene { display: none; }
+  .szene, .ist-anzeige { display: none; }
 }
 
-/* (D) TOUCH-Geraete: noch groessere Tap-Targets, kein Hover noetig. */
+/* (E) TOUCH-Geraete: noch groessere Tap-Targets, kein Hover noetig. */
 @media (pointer: coarse) {
   :root { --tap-min: 64px; }
   .stepper-btn { min-width: 76px; }
 }
 
-/* (E) Barrierefreiheit: bei "reduzierter Bewegung" keine Animationen. */
+/* (F) Barrierefreiheit: bei "reduzierter Bewegung" keine Animationen. */
 @media (prefers-reduced-motion: reduce) {
   .zeiger,
   .uhr-svg.schuetteln,

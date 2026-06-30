@@ -23,6 +23,9 @@ Abfahrtszeit eingestellt werden.
     *aktive* Zeiger und rastet magnetisch ein – so kann nichts „wegfliegen".
 - **Fließender Stundenzeiger** – bewegt sich wie bei einer echten Uhr mit den
   Minuten mit.
+- **12-Stunden-Uhr ohne AM/PM:** Eine Zielzeit wie `18:00` wird einfach über die
+  `6`-Uhr-Stellung eingestellt – die Zeiger-Stellung zählt (Vergleich auf
+  12-Stunden-Basis), kein Vormittag/Nachmittag-Schalter nötig.
 - **Mobil-/Hochkant-optimiert:** erkennt Touch-Geräte, große Tap-Targets,
   Layout passt sich an Handy (hochkant), Tablet und Desktop an.
 - **Freundliches Feedback:** grüne Erfolgs-Animation + abfahrender Zug bei

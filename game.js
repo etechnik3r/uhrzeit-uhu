@@ -119,6 +119,7 @@
     zeigerMinute: document.getElementById("zeiger-minute"),
     markierungen: document.getElementById("zifferblatt-markierungen"),
     istZeit:      document.getElementById("anzeige-ist"),
+    ziehHinweis:  document.getElementById("zieh-hinweis"),
 
     // Steuerung
     stepperBtns: document.querySelectorAll(".stepper-btn"),     // − / + Knoepfe
@@ -250,13 +251,22 @@
     markiereAktivenModus();
   }
 
-  /** Hebt den aktiven Zeiger und die aktive Steller-Zeile optisch hervor. */
+  /** Hebt den aktiven Zeiger und die aktive Steller-Zeile optisch hervor und
+   *  schreibt einen klaren Hinweis, welcher Zeiger gerade gezogen wird. */
   function markiereAktivenModus() {
     var stundeAktiv = state.aktiverModus === "stunde";
     el.zeigerStunde.classList.toggle("aktiv", stundeAktiv);
     el.zeigerMinute.classList.toggle("aktiv", !stundeAktiv);
     el.zeileStunde.classList.toggle("aktiv", stundeAktiv);
     el.zeileMinute.classList.toggle("aktiv", !stundeAktiv);
+
+    // Dynamischer Hinweis: macht deutlich, welcher (orange) Zeiger beim Ziehen
+    // reagiert und wie man auf den anderen umschaltet.
+    if (el.ziehHinweis) {
+      el.ziehHinweis.textContent = stundeAktiv
+        ? "👆 Du stellst die STUNDE (orange). Für Minuten unten „Minute“ tippen."
+        : "👆 Du stellst die MINUTE (orange). Für Stunden unten „Stunde“ tippen.";
+    }
   }
 
   /** Aktualisiert Top-Bar (Level, Punkte, Rekord) und die Level-Buttons. */
@@ -450,7 +460,7 @@
     var dMinute = abstandZuStrecke(px, py, mitte, zeigerSpitze("minute"));
     var dStunde = abstandZuStrecke(px, py, mitte, zeigerSpitze("stunde"));
 
-    var schwelle = r.width * 0.16;            // "nahe an einem Zeiger"
+    var schwelle = r.width * 0.20;            // "nahe an einem Zeiger" (grosszuegig)
     if (Math.min(dMinute, dStunde) > schwelle) { return null; }        // zu weit weg
     if (Math.abs(dMinute - dStunde) < r.width * 0.05) { return null; } // zu mehrdeutig
     return dMinute < dStunde ? "minute" : "stunde";
@@ -534,9 +544,17 @@
      PRUEFUNG "ABFAHRT!" + FEEDBACK
      ----------------------------------------------------------------------- */
 
-  /** Vergleicht eingestellte Zeit mit Zielzeit. Kein Game Over – beliebig oft. */
+  /**
+   * Vergleicht eingestellte Zeit mit Zielzeit. Kein Game Over – beliebig oft.
+   *
+   * Der Vergleich erfolgt auf 12-STUNDEN-BASIS: Die analoge Uhr ist eine
+   * klassische 12h-Uhr, daher zaehlt die ZEIGER-STELLUNG. Eine Zielzeit von
+   * 18:00 wird also korrekt durch die 6-Uhr-Stellung eingestellt – ein
+   * AM/PM-Schalter ist nicht noetig. Das "% 720" (= 12 * 60 Minuten) bildet
+   * Vormittag und Nachmittag auf dieselbe Zeiger-Stellung ab.
+   */
   function pruefeAbfahrt() {
-    if (state.aktuelleMinuten === state.zielMinuten) {
+    if ((state.aktuelleMinuten % 720) === (state.zielMinuten % 720)) {
       // ---- RICHTIG ----
       state.punkte += 1;
       if (state.punkte > state.rekord) { state.rekord = state.punkte; }
