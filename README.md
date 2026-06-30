@@ -24,7 +24,13 @@ Abfahrtszeit eingestellt werden.
   - Keine +/- Knöpfe – das Kind stellt die Uhr selbst.
 - **Wenig Text, viele Symbole** – auch für Kinder, die noch nicht lesen können
   (Zeit per 🔊 anhörbar, Punkte ⭐ / Rekord 🏆 als Symbole).
-- **Kleiner Zug am Bahnhof**, der bei richtiger Zeit losfährt 🚂💨.
+- **Kleiner SVG-Zug am Bahnhof**: fährt von rechts ein, hält, und fährt bei
+  richtiger Zeit nach links los (Lok voran) – dann kommt der nächste Zug.
+- **Einstellungs-Seite** über das Menü ⚙️ (oben rechts):
+  - Schwierigkeit (Leicht / Mittel / Schwer) mit Symbolen und Erklärung,
+  - Zeitformat **12 / 24 Stunden**,
+  - **4 Ziffernblätter** (Schlicht / Zahlen / Minutenstriche / 24‑Stunden‑Ring).
+- **⭐ Punkte / 🏆 Rekord** mit Erklär-Popup beim Antippen.
 - **12-Stunden-Uhr ohne AM/PM:** Eine Zielzeit wie `18:00` wird einfach über die
   `6`-Uhr-Stellung eingestellt – die Zeiger-Stellung zählt (Vergleich auf
   12-Stunden-Basis), kein Vormittag/Nachmittag-Schalter nötig.

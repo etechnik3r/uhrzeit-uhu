@@ -42,9 +42,6 @@
     3: { zielRaster: 5,  name: "Schwer" }    // alle 5 Minuten
   };
 
-  // Symbol fuer den kleinen Schwierigkeits-Punkt am Zahnrad.
-  var LEVEL_PUNKT = { 1: "🟢", 2: "🟡", 3: "🔴" };
-
 
   /* 2. SPIELZUSTAND (State) ----------------------------------------------
      Einstellbare Optionen sind Teil des States und werden gespeichert:
@@ -73,7 +70,6 @@
     statPunkte: document.getElementById("stat-punkte"),
     statRekord: document.getElementById("stat-rekord"),
     zahnrad: document.getElementById("button-einstellungen"),
-    schwierigkeitPunkt: document.getElementById("schwierigkeit-punkt"),
 
     zielZeit: document.getElementById("anzeige-ziel"),
     vorlesen: document.getElementById("button-vorlesen"),
@@ -208,9 +204,19 @@
   function aktualisiereStatus() {
     el.punkte.textContent = state.punkte;
     el.rekord.textContent = state.rekord;
-    el.schwierigkeitPunkt.textContent = LEVEL_PUNKT[state.level];
     markiereAktiveOptionen();
   }
+
+  /* --- Zug am Bahnhof: einfahren (von rechts) / abfahren (nach links) ---
+     Wir setzen die Animationsklasse jeweils frisch (Reflow erzwingen), damit
+     dieselbe Animation auch bei aufeinanderfolgenden Aufgaben erneut startet. */
+  function starteZugAnimation(klasse) {
+    el.zug.classList.remove("einfahren", "abfahren");
+    void el.zug.getBoundingClientRect();   // Reflow -> Animation kann neu starten
+    el.zug.classList.add(klasse);
+  }
+  function zugEinfahren() { starteZugAnimation("einfahren"); }
+  function zugAbfahren()  { starteZugAnimation("abfahren"); }
 
 
   /* 7. AUFGABEN & SCHWIERIGKEIT ------------------------------------------ */
@@ -235,7 +241,7 @@
     state.aktiverZeiger = "stunde";
 
     el.zielZeit.textContent = formatZeit(state.zielMinuten);
-    el.zug.classList.remove("faehrt");
+    zugEinfahren();           // ein neuer Zug faehrt von rechts ein und haelt
     zeigeHinweis("", "");
     aktualisiereUhr();
   }
@@ -347,7 +353,7 @@
       zeigeHinweis("✅ Super! Der Zug fährt ab! 🎉", "erfolg");
       spielKlang("erfolg");
       el.svg.classList.add("erfolg");
-      el.zug.classList.add("faehrt");
+      zugAbfahren();           // der Zug faehrt nach links los
 
       aktualisiereStatus();
       speichereStand();

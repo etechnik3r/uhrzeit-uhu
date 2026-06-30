@@ -1,67 +1,64 @@
 /* ===========================================================================
    Uhrzeit-Uhu: Der Zeitreisen-Express  –  Stylesheet (style.css)
    ---------------------------------------------------------------------------
-   Mobil-first, fuer Erstklaesser: wenig Text, grosse Symbole, grosse Uhr,
-   grosse Tap-Targets. Eingestellt wird die Uhr durch ZIEHEN der Zeiger.
+   Mobil-first, fuer Erstklaesser. Wenig Text, grosse Symbole, grosse Uhr.
 
-   FARBSCHEMA (UX: kindgerecht + wertig)
-     - ruhiger, "premium" wirkender Indigo-Verlauf als Buehne (wie ein
-       Nachthimmel fuer den Zeitreise-Zug)
-     - warme, cremefarbene Flaechen statt hartem Weiss
-     - goldenes Zifferblatt, tuerkis-gruener Haupt-Button (CTA)
-     - Bernstein/Orange als Akzent fuer den AKTIVEN Zeiger
+   DESIGN (UX: kindgerecht + wertig)
+     - dezenter Verlauf von hellem zu etwas dunklerem Blau als ruhige Buehne
+     - reine weisse Flaechen mit WEICHEN, diffusen Schatten (Tiefe/Wertigkeit)
+     - ein dunkles, edles "Abfahrt"-Schild als Blickfang (goldene Ziffern)
+     - warmes Bernstein als Akzent fuer den aktiven Zeiger, frisches Gruen als CTA
    =========================================================================== */
 
 
-/* 1) DESIGN-TOKENS (Farben, Schrift, Masse) -------------------------------- */
+/* 1) DESIGN-TOKENS --------------------------------------------------------- */
 :root {
-  /* Buehne / Hintergrund */
-  --bg-1: #2f367e;     /* tiefes Indigo            */
-  --bg-2: #5b62c9;     /* helleres Indigo/Violett  */
-  --bg-3: #8a8fe0;     /* sanftes Periwinkle       */
+  /* Buehne: heller -> etwas dunkler Blauverlauf */
+  --bg-top: #e7f0fe;
+  --bg-mid: #c2d8f6;
+  --bg-bot: #8fb2e6;
 
-  /* Flaechen */
-  --surface:   #fffaf1;   /* warmes Creme  */
-  --surface-2: #ffffff;
-  --panel:     #2a2f63;   /* dunkles Panel (Top-Bar/Footer) */
+  /* Flaechen + Text */
+  --surface:  #ffffff;
+  --ink:      #1e2c52;
+  --muted:    #5f6e96;
+  --on-dark:  #f4f8ff;
 
-  /* Text */
-  --ink:    #232a55;      /* tiefes Navy  */
-  --ink-2:  #5b6296;      /* gedaempft    */
-  --on-dark:#f6f7ff;
+  /* edles dunkles Schild (Abfahrtszeit) */
+  --card-1: #2b4373;
+  --card-2: #1d2c54;
 
   /* Akzente */
-  --accent:      #ff9f1c;   /* Bernstein (aktiver Zeiger, Highlights) */
-  --accent-deep: #f58200;
-  --coral:       #ff6b6b;
-  --success:     #1cc6a6;   /* tuerkis-gruen (Abfahrt-Button) */
-  --success-deep:#159e85;
-  --gold:        #ffd166;   /* Zifferblatt-Rand */
+  --accent:   #ff9e2c;     /* aktiver Zeiger / Highlights */
+  --cta:      #28c08a;     /* Abfahrt-Button (frisches Gruen) */
+  --cta-deep: #149e72;
+  --gold:     #f3c44a;     /* Ziffernblatt-Rand + Ziel-Ziffern */
 
   /* Uhr */
-  --clock-rim:  #ffd166;
-  --clock-face: #fffdf6;
-  --hand-hour:  #2b2f63;
-  --hand-minute:#3a86ff;
+  --clock-face: #ffffff;
+  --hand-hour:  #243358;
+  --hand-minute:#3b72d6;
   --hand-active:#ff8a1f;
-  --tick:       #9aa3c7;
-  --tick-stark: #2b2f63;
-  --ring24:     #ff6b6b;
+  --tick:       #9fb0d4;
+  --tick-stark: #36456f;
+  --ring24:     #e8746b;
 
-  /* Schriften (kindgerecht, serifenlos, mit System-Fallback) */
+  /* Schriften */
   --font-display: "Baloo 2", "Comic Sans MS", "Trebuchet MS", system-ui, sans-serif;
   --font-body:    "Nunito", "Trebuchet MS", system-ui, -apple-system, "Segoe UI", sans-serif;
 
-  --radius:   20px;
+  --radius:   22px;
   --tap-min:  60px;
-  --schatten: 0 8px 22px rgba(20, 22, 60, 0.22);
-  --schatten-s: 0 3px 10px rgba(20, 22, 60, 0.16);
+
+  /* weiche, diffuse Schatten = Wertigkeit */
+  --sh-soft:  0 14px 34px rgba(36, 64, 130, 0.18);
+  --sh-card:  0 8px 20px rgba(36, 64, 130, 0.14);
+  --sh-chip:  0 4px 12px rgba(36, 64, 130, 0.16);
 }
 
 
 /* 2) GRUND-LAYOUT ---------------------------------------------------------- */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { height: 100%; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 
 body {
@@ -69,11 +66,10 @@ body {
   font-weight: 700;
   color: var(--ink);
 
-  /* Sanfter, "wertiger" Verlauf + dezente Lichtpunkte (Sterne) */
+  /* dezenter Blauverlauf + ganz leichte Lichtschattierung oben */
   background:
-    radial-gradient(1200px 600px at 80% -10%, rgba(255, 209, 102, 0.18), transparent 60%),
-    radial-gradient(900px 500px at 10% 0%, rgba(138, 143, 224, 0.25), transparent 55%),
-    linear-gradient(165deg, var(--bg-1) 0%, var(--bg-2) 55%, var(--bg-3) 100%);
+    radial-gradient(120% 80% at 50% -20%, rgba(255,255,255,0.55), transparent 55%),
+    linear-gradient(180deg, var(--bg-top) 0%, var(--bg-mid) 52%, var(--bg-bot) 100%);
   background-attachment: fixed;
 
   display: flex;
@@ -95,12 +91,12 @@ body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 8px 14px;
-  background: rgba(20, 22, 60, 0.32);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  color: var(--on-dark);
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(255, 255, 255, 0.62);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 4px 18px rgba(36, 64, 130, 0.12);
 }
 
 .marke { display: flex; align-items: center; gap: 8px; }
@@ -109,49 +105,45 @@ body {
   font-family: var(--font-display);
   font-size: 1.3rem;
   font-weight: 800;
-  color: var(--gold);
+  color: var(--ink);
 }
 
+/* Polierte Punkte/Rekord-Chips: weiss, weicher Schatten, klare Zahl. */
 .status { display: flex; gap: 10px; }
 .stat {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 6px;
-  background: rgba(255, 255, 255, 0.16);
+  gap: 7px;
+  background: var(--surface);
   border: none;
   border-radius: 999px;
-  padding: 6px 14px;
-  color: var(--on-dark);
+  padding: 7px 15px 7px 12px;
+  color: var(--ink);
   font-family: var(--font-display);
+  box-shadow: var(--sh-chip);
   cursor: pointer;
-  transition: transform 0.1s ease, background 0.15s ease;
+  transition: transform 0.1s ease, box-shadow 0.15s ease;
 }
 .stat:active { transform: scale(0.94); }
-.stat-icon { font-size: 1.3rem; }
-.stat-wert { font-size: 1.4rem; font-weight: 800; min-width: 1ch; text-align: center; }
+.stat-icon { font-size: 1.35rem; line-height: 1; }
+.stat-wert { font-size: 1.4rem; font-weight: 800; min-width: 1ch; text-align: center; color: var(--ink); }
 
-/* Zahnrad + Schwierigkeits-Punkt */
-.zahnrad {
-  position: relative;
+/* Grosser, gut erreichbarer Menue-Button */
+.menue-button {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.16);
+  width: 56px;
+  height: 56px;
+  background: var(--surface);
   border: none;
   border-radius: 50%;
+  box-shadow: var(--sh-chip);
   cursor: pointer;
-  transition: transform 0.15s ease, background 0.15s ease;
+  transition: transform 0.18s ease;
 }
-.zahnrad:active { transform: scale(0.92) rotate(40deg); }
-.zahnrad-icon { font-size: 1.6rem; line-height: 1; }
-.schwierigkeit-punkt {
-  position: absolute;
-  top: -4px; right: -4px;
-  font-size: 0.85rem;
-  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
-}
+.menue-button:active { transform: scale(0.9) rotate(35deg); }
+.menue-icon { font-size: 1.9rem; line-height: 1; }
 
 
 /* 4) ABFAHRTSZEIT + UHR ----------------------------------------------------- */
@@ -161,20 +153,21 @@ body {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 14px;
+  padding: 14px 12px;
 }
 
+/* edles dunkles Schild als Blickfang */
 .ziel-anzeige {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  background: linear-gradient(160deg, #2a2f63, #1f2350);
+  background: linear-gradient(160deg, var(--card-1), var(--card-2));
   border: none;
   border-radius: var(--radius);
-  box-shadow: var(--schatten);
-  padding: 10px 30px;
+  box-shadow: var(--sh-soft);
+  padding: 12px 34px;
   cursor: pointer;
   transition: transform 0.1s ease;
 }
@@ -184,7 +177,7 @@ body {
   font-size: 0.95rem;
   font-weight: 700;
   letter-spacing: 2px;
-  color: #aeb6ef;
+  color: #aebce6;
 }
 .ziel-zeit {
   font-family: var(--font-display);
@@ -215,11 +208,12 @@ body {
 .uhr-svg {
   width: min(92vw, 56vh, 460px);
   height: min(92vw, 56vh, 460px);
-  filter: drop-shadow(0 10px 22px rgba(15, 16, 50, 0.35));
+  /* weicher, mehrschichtiger Schatten = Tiefe */
+  filter: drop-shadow(0 16px 30px rgba(28, 50, 110, 0.30));
   touch-action: none;
 }
 
-.uhr-rand  { fill: var(--clock-rim); }
+.uhr-rand  { fill: var(--gold); }
 .uhr-blatt { fill: var(--clock-face); }
 .uhr-mitte { fill: var(--hand-hour); }
 
@@ -234,11 +228,7 @@ body {
   text-anchor: middle;
   dominant-baseline: central;
 }
-.markierung-zahl.innen24 {
-  fill: var(--ring24);
-  font-size: 9px;
-  font-weight: 700;
-}
+.markierung-zahl.innen24 { fill: var(--ring24); font-size: 9px; font-weight: 700; }
 
 .zeiger {
   transform-box: view-box;
@@ -250,14 +240,11 @@ body {
 .zeiger-stunde { stroke: var(--hand-hour);   stroke-width: 9; }
 .zeiger-minute { stroke: var(--hand-minute); stroke-width: 6; }
 .uhr-svg.wird-gezogen .zeiger { transition: none; }
-.zeiger.aktiv {
-  stroke: var(--hand-active);
-  filter: drop-shadow(0 0 5px rgba(255, 138, 31, 0.9));
-}
+.zeiger.aktiv { stroke: var(--hand-active); filter: drop-shadow(0 0 5px rgba(255, 138, 31, 0.9)); }
 
 .hinweis {
   font-family: var(--font-display);
-  color: var(--on-dark);
+  color: var(--ink);
   font-size: 1.15rem;
   font-weight: 700;
   text-align: center;
@@ -265,84 +252,103 @@ body {
   transition: color 0.2s ease;
   padding: 0 8px;
 }
-.hinweis.erfolg { color: #b7ffe9; }
-.hinweis.fehler { color: #ffd6c2; }
+.hinweis.erfolg { color: var(--cta-deep); }
+.hinweis.fehler { color: #d9743a; }
 
 
 /* 5) BAHNHOF + ABFAHRT-BUTTON ---------------------------------------------- */
 .steuerung {
-  background: rgba(20, 22, 60, 0.32);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(255, 255, 255, 0.55);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 -4px 18px rgba(36, 64, 130, 0.10);
   padding: 10px 16px calc(14px + env(safe-area-inset-bottom));
   text-align: center;
 }
 
-/* Gleis: der Zug steht RECHTS und faehrt nach LINKS los (Lok voran). */
+/* Gleis: eine saubere Schiene mit Schwellen darunter. */
 .bahnhof {
   position: relative;
-  max-width: 520px;
-  height: 54px;
+  max-width: 540px;
+  height: 58px;
   margin: 0 auto 10px;
-  display: flex;
-  align-items: flex-end;
-  justify-content: flex-end;          /* Zug startet rechts */
   overflow: hidden;
-  border-bottom: 6px solid #6b5640;
-  background:
-    repeating-linear-gradient(90deg,
-      rgba(0,0,0,0) 0 16px,
-      rgba(0,0,0,0.20) 16px 20px) left bottom / 100% 12px no-repeat;
 }
+.gleis {
+  position: absolute;
+  left: 0; right: 0; bottom: 6px;
+  height: 12px;
+  /* Schwellen (helle Striche) + darunter die durchgehende Schiene */
+  background:
+    repeating-linear-gradient(90deg, #9a795a 0 4px, transparent 4px 18px) top/100% 9px no-repeat,
+    linear-gradient(#6b5640, #6b5640) bottom/100% 4px no-repeat;
+}
+
+/* Der SVG-Zug ruht in der Mitte; faehrt nach LINKS los. */
 .zug {
-  font-size: 2.1rem;
-  line-height: 1;
-  padding-bottom: 5px;
-  white-space: nowrap;
+  position: absolute;
+  bottom: 8px;
+  left: 50%;
+  width: min(72%, 240px);
+  height: auto;
+  transform: translateX(-50%);
   will-change: transform;
 }
-.zug.faehrt { animation: losfahren 1.4s ease-in forwards; }
+.zug.einfahren { animation: einfahren 0.95s cubic-bezier(0.2, 0.7, 0.25, 1) both; }
+.zug.abfahren  { animation: abfahren 1.4s ease-in both; }
+
+/* Zug-Teile */
+.lok-koerper { fill: #e0503f; }
+.lok-front   { fill: #b23a2c; }
+.lok-kabine  { fill: #e0503f; }
+.lok-dach, .lok-schlot, .lok-schlot-kappe, .lok-dom, .waggon-dach { fill: #2b3a63; }
+.lok-fenster, .fenster { fill: #bfe0ff; }
+.waggon-a { fill: #f3b23e; }
+.waggon-b { fill: #2bb39a; }
+.rad      { fill: #2b3a63; stroke: #cfd8ec; stroke-width: 2; }
+.rad-klein{ fill: #2b3a63; stroke: #cfd8ec; stroke-width: 1.5; }
+.kupplung { fill: #46506f; }
+.rauch    { fill: rgba(255,255,255,0.85); }
 
 .abfahrt-button {
   width: 100%;
-  max-width: 520px;
+  max-width: 540px;
   min-height: var(--tap-min);
   padding: 12px 24px;
   font-family: var(--font-display);
   font-size: 1.7rem;
   font-weight: 800;
   color: #ffffff;
-  background: linear-gradient(180deg, var(--success), var(--success-deep));
+  background: linear-gradient(180deg, var(--cta), var(--cta-deep));
   border: none;
-  border-bottom: 5px solid #0e7d68;
   border-radius: var(--radius);
-  box-shadow: var(--schatten);
+  box-shadow: 0 10px 22px rgba(20, 158, 114, 0.32);
   cursor: pointer;
-  transition: transform 0.1s ease;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
 }
-.abfahrt-button:active { transform: translateY(3px); border-bottom-width: 2px; }
+.abfahrt-button:active { transform: translateY(3px); box-shadow: 0 5px 12px rgba(20, 158, 114, 0.30); }
+.abfahrt-icon { font-size: 1.5rem; }
 
 
-/* 6) POPOVER (Erklaerung fuer ⭐ / 🏆) ------------------------------------- */
+/* 6) POPOVER --------------------------------------------------------------- */
 .popover {
   position: fixed;
   z-index: 50;
-  max-width: 240px;
+  max-width: 250px;
   background: var(--surface);
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 1rem;
   font-weight: 700;
-  line-height: 1.3;
-  padding: 12px 14px;
-  border-radius: 14px;
-  box-shadow: var(--schatten);
-  border: 3px solid var(--gold);
+  line-height: 1.35;
+  padding: 13px 15px;
+  border-radius: 16px;
+  box-shadow: var(--sh-soft);
 }
 .popover[hidden] { display: none; }
 
 
-/* 7) EINSTELLUNGS-MODAL ----------------------------------------------------- */
+/* 7) EINSTELLUNGS-SEITE (Vollbild-Overlay) --------------------------------- */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -350,98 +356,80 @@ body {
   display: none;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  background: rgba(15, 16, 50, 0.55);
-  backdrop-filter: blur(3px);
-  -webkit-backdrop-filter: blur(3px);
+  padding: 20px;
+  background: rgba(20, 34, 70, 0.45);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
 }
 .modal-overlay.offen { display: flex; }
 
 .modal {
-  position: relative;
+  display: flex;
+  flex-direction: column;
   width: 100%;
   max-width: 560px;
-  max-height: 90vh;
-  overflow-y: auto;
+  max-height: 92vh;
   background: var(--surface);
-  border-radius: 24px;
-  box-shadow: var(--schatten);
-  padding: 22px 20px 20px;
+  border-radius: 26px;
+  box-shadow: var(--sh-soft);
+  overflow: hidden;
 }
-.modal-titel {
-  font-family: var(--font-display);
-  font-size: 1.7rem;
-  color: var(--ink);
-  text-align: center;
-  margin-bottom: 14px;
+.modal-kopf {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 12px;
+  border-bottom: 2px solid #eef1f8;
 }
+.modal-titel { font-family: var(--font-display); font-size: 1.7rem; color: var(--ink); }
 .modal-schliessen {
-  position: absolute;
-  top: 12px; right: 12px;
-  width: 42px; height: 42px;
-  font-size: 1.2rem;
-  font-weight: 800;
+  width: 44px; height: 44px;
+  font-size: 1.2rem; font-weight: 800;
   color: var(--ink);
-  background: #efe7d6;
-  border: none;
-  border-radius: 50%;
+  background: #eef1f8;
+  border: none; border-radius: 50%;
   cursor: pointer;
 }
 .modal-schliessen:active { transform: scale(0.92); }
 
-.opt-gruppe { margin-bottom: 18px; }
-.opt-titel {
-  font-family: var(--font-display);
-  font-size: 1.2rem;
-  color: var(--ink);
-  margin-bottom: 8px;
-}
-.opt-reihe {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-}
+.modal-inhalt { padding: 16px 20px; overflow-y: auto; }
+
+.opt-gruppe { margin-bottom: 20px; }
+.opt-titel { font-family: var(--font-display); font-size: 1.2rem; color: var(--ink); margin-bottom: 10px; }
+.opt-reihe { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .opt-reihe-vier { grid-template-columns: repeat(2, 1fr); }
 
-/* Eine Auswahl-Karte: grosses Symbol + Name + erklaerender Text */
 .opt-karte {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 12px 8px;
-  background: var(--surface-2);
-  border: 3px solid #e7ddc9;
-  border-radius: 16px;
+  padding: 14px 8px;
+  background: #f7f9fe;
+  border: 3px solid #f7f9fe;
+  border-radius: 18px;
+  box-shadow: var(--sh-card);
   cursor: pointer;
   text-align: center;
   transition: transform 0.1s ease, border-color 0.15s ease, background 0.15s ease;
 }
 .opt-karte:active { transform: scale(0.96); }
-.opt-karte.aktiv {
-  border-color: var(--accent);
-  background: #fff4e0;
-}
+.opt-karte.aktiv { border-color: var(--accent); background: #fff5e6; }
 .opt-icon { font-size: 1.9rem; line-height: 1; }
-.opt-name {
-  font-family: var(--font-display);
-  font-size: 1.05rem;
-  font-weight: 800;
-  color: var(--ink);
-}
-.opt-text { font-size: 0.82rem; color: var(--ink-2); line-height: 1.15; }
+.opt-name { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; color: var(--ink); }
+.opt-text { font-size: 0.82rem; color: var(--muted); line-height: 1.15; }
 
 .modal-fertig {
-  width: 100%;
-  min-height: 56px;
-  margin-top: 4px;
+  margin: 4px 20px 20px;
+  min-height: 58px;
   font-family: var(--font-display);
   font-size: 1.4rem;
   font-weight: 800;
   color: #fff;
-  background: linear-gradient(180deg, var(--success), var(--success-deep));
+  background: linear-gradient(180deg, var(--cta), var(--cta-deep));
   border: none;
-  border-radius: 16px;
+  border-radius: 18px;
+  box-shadow: 0 8px 18px rgba(20, 158, 114, 0.30);
   cursor: pointer;
 }
 .modal-fertig:active { transform: translateY(2px); }
@@ -458,43 +446,47 @@ body {
 .uhr-svg.schuetteln { animation: schuetteln 0.5s ease; }
 
 @keyframes erfolg-puls {
-  0%   { filter: drop-shadow(0 10px 22px rgba(15,16,50,0.35)); }
-  50%  { filter: drop-shadow(0 0 30px var(--success)) brightness(1.08); }
-  100% { filter: drop-shadow(0 10px 22px rgba(15,16,50,0.35)); }
+  0%   { filter: drop-shadow(0 16px 30px rgba(28,50,110,0.30)); }
+  50%  { filter: drop-shadow(0 0 30px var(--cta)) brightness(1.06); }
+  100% { filter: drop-shadow(0 16px 30px rgba(28,50,110,0.30)); }
 }
 .uhr-svg.erfolg { animation: erfolg-puls 0.9s ease; }
 
-/* Zug faehrt nach LINKS aus dem Bild (Lok voran). Kurzes Anrucken nach rechts. */
-@keyframes losfahren {
-  0%   { transform: translateX(0); }
-  12%  { transform: translateX(10px); }
-  100% { transform: translateX(-130vw); }
+/* Zug faehrt von rechts EIN und haelt mittig (translateX -50%). */
+@keyframes einfahren {
+  0%   { transform: translateX(160%); }
+  100% { transform: translateX(-50%); }
+}
+/* Zug faehrt nach LINKS los (Lok voran). Kurzes Anrucken nach rechts. */
+@keyframes abfahren {
+  0%   { transform: translateX(-50%); }
+  10%  { transform: translateX(-44%); }
+  100% { transform: translateX(-260%); }
 }
 
 
 /* 9) RESPONSIVES VERHALTEN ------------------------------------------------- */
 @media (min-width: 900px) {
-  .haupt-bereich {
-    flex-direction: row;
-    flex-wrap: wrap;
-    gap: 40px;
-    padding: 24px;
-  }
+  .haupt-bereich { flex-direction: row; flex-wrap: wrap; gap: 44px; padding: 24px; }
   .uhr-svg { width: min(48vw, 70vh, 480px); height: min(48vw, 70vh, 480px); }
 }
 
 @media (max-width: 600px) {
   .marke-text { display: none; }
-  .top-bar { padding: 6px 12px; }
-  .haupt-bereich { gap: 8px; padding: 8px; }
-  .ziel-anzeige { padding: 8px 24px; }
+  .top-bar { padding: 8px 12px; }
+  .haupt-bereich { gap: 10px; padding: 10px; }
+  .ziel-anzeige { padding: 10px 26px; }
   .opt-reihe { gap: 8px; }
+
+  /* Einstellungen werden zur Vollbild-Seite. */
+  .modal-overlay { padding: 0; }
+  .modal { max-width: 100%; height: 100%; max-height: 100%; border-radius: 0; }
 }
 
 @media (max-width: 600px) and (max-height: 820px) {
   .ziel-zeit { font-size: clamp(2.6rem, 11vw, 4rem); }
   .uhr-svg { width: min(90vw, 50vh, 420px); height: min(90vw, 50vh, 420px); }
-  .bahnhof { height: 46px; }
+  .bahnhof { height: 50px; }
   .abfahrt-button { font-size: 1.5rem; min-height: 56px; }
 }
 
@@ -506,7 +498,7 @@ body {
 @media (pointer: coarse) { :root { --tap-min: 64px; } }
 
 @media (prefers-reduced-motion: reduce) {
-  .zeiger, .uhr-svg.schuetteln, .uhr-svg.erfolg, .zug.faehrt {
+  .zeiger, .uhr-svg.schuetteln, .uhr-svg.erfolg, .zug.einfahren, .zug.abfahren {
     animation: none !important;
     transition: none !important;
   }
