@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<!--
+  ============================================================================
+  Uhrzeit-Uhu: Der Zeitreisen-Express
+  ----------------------------------------------------------------------------
+  Ein kindgerechtes Lernspiel, das Grundschulkindern das Ablesen und Einstellen
+  der analogen sowie digitalen Uhrzeit beibringt.
+
+  Diese Datei enthaelt NUR die Struktur (das Markup) des Spiels.
+  - Das Aussehen wird in  style.css  definiert.
+  - Die gesamte Spiellogik liegt in  game.js.
+
+  So bleibt der Code sauber getrennt und ist gut versionierbar (Git).
+  ============================================================================
+-->
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <!--
+    viewport: Sorgt dafuer, dass die Seite auf Tablets/Smartphones korrekt
+    skaliert wird. "user-scalable=no" verhindert versehentliches Zoomen,
+    wenn ein Kind mit zwei Fingern auf die Zeiger der Uhr tippt.
+  -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="Lernspiel zum Uhrzeit-Lesen fuer Kinder im Grundschulalter.">
+  <title>Uhrzeit-Uhu: Der Zeitreisen-Express</title>
+  <link rel="stylesheet" href="style.css">
+  <!-- Ein kleines Emoji als Favicon (Browser-Tab-Symbol) ohne externe Bilddatei -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
+</head>
+
+<body>
+
+  <!-- ====================================================================
+       1) TOP-BAR: Zeigt Level, Punktestand und Highscore.
+            Enthaelt ausserdem die Level-Auswahl-Buttons.
+       ==================================================================== -->
+  <header class="top-bar">
+    <div class="marke">
+      <span class="marke-emoji" aria-hidden="true">🦉</span>
+      <span class="marke-text">Uhrzeit-Uhu</span>
+    </div>
+
+    <!-- Anzeige der aktuellen Spielwerte -->
+    <div class="status">
+      <div class="status-feld">
+        <span class="status-label">Level</span>
+        <!-- Wird per JavaScript mit der aktuellen Levelnummer gefuellt -->
+        <span class="status-wert" id="anzeige-level">1</span>
+      </div>
+      <div class="status-feld">
+        <span class="status-label">Punkte</span>
+        <span class="status-wert" id="anzeige-punkte">0</span>
+      </div>
+      <div class="status-feld">
+        <span class="status-label">Rekord</span>
+        <span class="status-wert" id="anzeige-rekord">0</span>
+      </div>
+    </div>
+
+    <!-- Level-Auswahl: Das Kind (oder die Begleitperson) kann die Stufe waehlen -->
+    <nav class="level-auswahl" aria-label="Level auswaehlen">
+      <button type="button" class="level-button" data-level="1">Stufe 1</button>
+      <button type="button" class="level-button" data-level="2">Stufe 2</button>
+      <button type="button" class="level-button" data-level="3">Stufe 3</button>
+    </nav>
+  </header>
+
+
+  <!-- ====================================================================
+       2) MAIN-AREA: Links der Fahrplan (Zielzeit), rechts die Cockpit-Uhr.
+       ==================================================================== -->
+  <main class="haupt-bereich">
+
+    <!-- ---- LINKS: Der Fahrplan mit der digitalen Zielzeit ---- -->
+    <section class="fahrplan" aria-label="Fahrplan">
+      <h2 class="fahrplan-titel">🚂 Fahrplan</h2>
+
+      <!-- Kurzer, kindgerechter Auftragstext -->
+      <p class="auftrag" id="auftrag-text">
+        Stelle die Bahnhofsuhr auf die Abfahrtszeit!
+      </p>
+
+      <!-- Die grosse, deutlich lesbare digitale ZIELzeit -->
+      <div class="ziel-anzeige">
+        <span class="ziel-label">Abfahrt</span>
+        <span class="ziel-zeit" id="anzeige-ziel">08:00</span>
+      </div>
+
+      <!-- Button: liest die Zielzeit per Sprachausgabe vor (Web Speech API) -->
+      <button type="button" class="vorlese-button" id="button-vorlesen">
+        🔊 Zeit vorlesen
+      </button>
+
+      <!-- Dekorative Szene: der Uhu im Zug -->
+      <div class="szene" aria-hidden="true">
+        <span class="szene-uhu">🦉</span>
+        <span class="szene-zug" id="szene-zug">🚂💨</span>
+      </div>
+    </section>
+
+
+    <!-- ---- RECHTS: Die interaktive analoge Cockpit-Uhr ---- -->
+    <section class="uhr-bereich" aria-label="Analoge Uhr">
+
+      <!--
+        Die Uhr wird als inline-SVG gezeichnet. Vorteile gegenueber einer
+        Bilddatei: frei skalierbar (scharf auf jedem Bildschirm), keine
+        externen Dateien und die Zeiger lassen sich direkt per JavaScript
+        drehen sowie per Maus/Finger greifen.
+
+        Das Koordinatensystem (viewBox) ist 200 x 200 Einheiten gross.
+        Der Mittelpunkt der Uhr liegt damit bei (100, 100).
+      -->
+      <svg id="uhr-svg" class="uhr-svg" viewBox="0 0 200 200" role="img"
+           aria-label="Analoge Uhr zum Einstellen der Zeit">
+
+        <!-- Aeusserer Rand und Zifferblatt der Uhr -->
+        <circle cx="100" cy="100" r="96" class="uhr-rand"></circle>
+        <circle cx="100" cy="100" r="90" class="uhr-blatt"></circle>
+
+        <!--
+          Stunden-Markierungen und Ziffern (1 bis 12).
+          Diese Gruppe wird beim Programmstart per JavaScript gefuellt,
+          damit das HTML uebersichtlich bleibt (siehe game.js -> zeichneZifferblatt()).
+        -->
+        <g id="zifferblatt-markierungen"></g>
+
+        <!--
+          Die ZEIGER.
+          Beide starten oben (12-Uhr-Position) und werden per CSS-transform
+          rotiert. Wichtig: transform-origin liegt im Mittelpunkt (100,100).
+
+          - Der Stundenzeiger ist kuerzer und dicker.
+          - Der Minutenzeiger ist laenger und schlanker.
+        -->
+        <line id="zeiger-stunde"  class="zeiger zeiger-stunde"
+              x1="100" y1="100" x2="100" y2="50"></line>
+        <line id="zeiger-minute"  class="zeiger zeiger-minute"
+              x1="100" y1="100" x2="100" y2="28"></line>
+
+        <!-- Mittelpunkt-Kappe der Uhr (verdeckt den Ansatz der Zeiger) -->
+        <circle cx="100" cy="100" r="6" class="uhr-mitte"></circle>
+      </svg>
+
+      <!-- Die digitale Anzeige der AKTUELL eingestellten Zeit -->
+      <div class="ist-anzeige">
+        <span class="ist-label">Eingestellt:</span>
+        <span class="ist-zeit" id="anzeige-ist">08:00</span>
+      </div>
+    </section>
+  </main>
+
+
+  <!-- ====================================================================
+       3) BOTTOM-AREA: Grosse Steuerungs-Buttons + "Abfahrt!"-Button.
+       ==================================================================== -->
+  <footer class="steuerung">
+
+    <!-- Freundlicher Hinweistext fuer Rueckmeldungen (Erfolg/Fehler) -->
+    <p class="hinweis" id="hinweis-text" role="status" aria-live="polite">
+      Tipp: Drehe zuerst den langen (Minuten-)Zeiger.
+    </p>
+
+    <div class="steuer-buttons">
+      <!-- Minuten verringern. Das Label (z.B. "- 5 Min") setzt JavaScript je Level. -->
+      <button type="button" class="zeit-button minus" id="button-minus">
+        <span class="zeit-button-pfeil">−</span>
+        <span class="zeit-button-label" id="label-minus">5 Minuten</span>
+      </button>
+
+      <!-- Der grosse, zentrale Pruef-Button -->
+      <button type="button" class="abfahrt-button" id="button-abfahrt">
+        🚂 Abfahrt!
+      </button>
+
+      <!-- Minuten erhoehen -->
+      <button type="button" class="zeit-button plus" id="button-plus">
+        <span class="zeit-button-pfeil">+</span>
+        <span class="zeit-button-label" id="label-plus">5 Minuten</span>
+      </button>
+    </div>
+  </footer>
+
+
+  <!--
+    Das Skript wird ganz am Ende des <body> eingebunden.
+    Dadurch ist sichergestellt, dass alle HTML-Elemente bereits existieren,
+    wenn JavaScript darauf zugreift. "defer" waere eine Alternative.
+  -->
+  <script src="game.js"></script>
+</body>
+</html>
