@@ -48,7 +48,10 @@ Abfahrtszeit eingestellt werden.
   richtiger Eingabe, sanftes Schütteln + ermutigender Hinweis bei Fehlern.
   **Kein Game Over** – unendlich viele Versuche.
 - **Browser-native Extras** (ohne externe Abhängigkeiten):
-  - 🔊 **Sprachausgabe** der Zielzeit (Web Speech API) – ideal für Leseanfänger
+  - 🔊 **Sprachausgabe** der Zielzeit (Web Speech API) – ideal für Leseanfänger.
+  Spricht **zufällig** verschiedene deutsche Formen, damit alle mittrainiert
+  werden: formal („neun Uhr dreißig"), „halb zehn", „Viertel nach neun",
+  „Viertel vor zehn", „zwanzig nach …", „zehn vor …", „fünf vor/nach halb …".
   - 🔉 **Soundeffekte** (Web Audio API) – programmatisch erzeugt
   - 💾 **Speichern** von Punkten, Level und Rekord (localStorage)
 ## 🚀 Starten

@@ -420,12 +420,6 @@
     u.lang = "de-DE"; u.rate = 0.9;
     window.speechSynthesis.speak(u);
   }
-  function zeitInWorten(min) {
-    var stunde = Math.floor(min / 60), minute = min % 60;
-    var satz = zahlInWorten(stunde) + " Uhr";
-    if (minute > 0) { satz += " " + zahlInWorten(minute); }
-    return satz;
-  }
   function zahlInWorten(n) {
     var einer = ["null", "ein", "zwei", "drei", "vier", "fuenf", "sechs", "sieben",
                  "acht", "neun", "zehn", "elf", "zwoelf", "dreizehn", "vierzehn",
@@ -434,6 +428,59 @@
     if (n < 20) { return einer[n]; }
     var z = Math.floor(n / 10), e = n % 10;
     return e === 0 ? zehner[z] : einer[e] + "und" + zehner[z];
+  }
+
+  /** Wie zahlInWorten, aber 1 = "eins" (allein stehend, z.B. "halb eins",
+   *  "Viertel nach eins") statt "ein" (das nur vor "Uhr" passt). */
+  function zahlAllein(n) { return n === 1 ? "eins" : zahlInWorten(n); }
+
+  /**
+   * Liefert ALLE gaengigen deutschen Sprechweisen einer Uhrzeit als Liste.
+   * Beispiele fuer 09:30 -> ["neun Uhr dreissig", "halb zehn"],
+   *            09:15 -> ["neun Uhr fuenfzehn", "Viertel nach neun"],
+   *            09:45 -> ["... ", "Viertel vor zehn", "drei Viertel zehn"].
+   *
+   * Die umgangssprachlichen Formen (Viertel/halb/nach/vor) sind 12-Stunden-
+   * basiert: h12 = aktuelle Stunde als 1..12, hNaechste = die darauf folgende
+   * Stunde (fuer "halb"/"Viertel vor"/"... vor ..."). Die formale Form nutzt
+   * die echte Stunde (also auch 13..24 im 24h-Modus).
+   */
+  function sprechweisen(min) {
+    var stunde = Math.floor(min / 60), minute = min % 60;
+    var h12 = (stunde % 12) || 12;            // 1..12
+    var hNaechste = ((stunde + 1) % 12) || 12; // folgende Stunde, 1..12
+
+    // (1) Formale Form: "<Stunde> Uhr [Minute]".
+    var formen = [zahlInWorten(stunde) + " Uhr" + (minute ? " " + zahlAllein(minute) : "")];
+
+    // (2) Umgangssprachliche Formen je nach Minute.
+    if (minute === 0) {
+      formen.push(zahlInWorten(h12) + " Uhr");                 // "neun Uhr"
+    } else if (minute === 15) {
+      formen.push("Viertel nach " + zahlAllein(h12));          // "Viertel nach neun"
+    } else if (minute === 30) {
+      formen.push("halb " + zahlAllein(hNaechste));            // "halb zehn"
+    } else if (minute === 45) {
+      formen.push("Viertel vor " + zahlAllein(hNaechste));     // "Viertel vor zehn"
+      formen.push("drei Viertel " + zahlAllein(hNaechste));    // "drei Viertel zehn"
+    } else if (minute < 30) {
+      formen.push(zahlInWorten(minute) + " nach " + zahlAllein(h12)); // "zwanzig nach neun"
+      if (minute === 20) { formen.push("zehn vor halb " + zahlAllein(hNaechste)); }
+      if (minute === 25) { formen.push("fuenf vor halb " + zahlAllein(hNaechste)); }
+    } else { // 31..59 (ausser 45)
+      formen.push(zahlInWorten(60 - minute) + " vor " + zahlAllein(hNaechste)); // "zehn vor zehn"
+      if (minute === 35) { formen.push("fuenf nach halb " + zahlAllein(hNaechste)); }
+      if (minute === 40) { formen.push("zehn nach halb " + zahlAllein(hNaechste)); }
+    }
+    // Doppelte Eintraege entfernen (z.B. bei vollen Stunden ist formal =
+    // umgangssprachlich), damit keine Form bevorzugt wird.
+    return formen.filter(function (f, i) { return formen.indexOf(f) === i; });
+  }
+
+  /** Eine ZUFAELLIGE Sprechweise der Uhrzeit (trainiert alle Varianten). */
+  function zeitInWorten(min) {
+    var formen = sprechweisen(min);
+    return formen[zufallGanzzahl(0, formen.length - 1)];
   }
 
   var audioContext = null;
