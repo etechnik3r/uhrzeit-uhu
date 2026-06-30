@@ -59,7 +59,8 @@
     istAmZiehen:     false,
 
     zeitformat: "24",
-    blatt:      "zahlen"
+    blatt:      "zahlen",
+    zeiger:     "standard"   // Zeiger-Stil: standard | duenn | dick | pfeil
   };
 
 
@@ -88,6 +89,7 @@
     modal:        document.getElementById("einstellungen"),
     modalZu:      document.getElementById("einstellungen-zu"),
     modalFertig:  document.getElementById("einstellungen-fertig"),
+    reset:        document.getElementById("button-reset"),
     optKarten:    document.querySelectorAll(".opt-karte")
   };
 
@@ -116,10 +118,11 @@
 
   /**
    * Zeichnet das Zifferblatt passend zur Einstellung state.blatt:
-   *   schlicht     : nur 12 Stundenstriche (keine Zahlen)
-   *   zahlen       : 12 Striche + Ziffern 1..12
-   *   minuten      : wie "zahlen" + 60 feine Minutenstriche
-   *   zwanzigvier  : wie "zahlen" + innen die 24h-Ziffern (13..24)
+   *   schlicht      : nur 12 Stundenstriche (keine Zahlen)
+   *   zahlen        : 12 Striche + Ziffern 1..12
+   *   minuten       : wie "zahlen" + 60 feine Minutenstriche
+   *   minutenzahlen : wie "minuten" + aussen die Minuten-Zahlen 5,10,...,55
+   *   zwanzigvier   : wie "zahlen" + innen die 24h-Ziffern (13..24)
    *
    * Winkel: 30 Grad je Stunde, oben = 12 (deshalb -90 Grad). Position auf einem
    * Kreis (Radius r) um (100,100): x = 100 + r*cos, y = 100 + r*sin.
@@ -127,9 +130,14 @@
   function zeichneZifferblatt() {
     leere(el.markierungen);
     var blatt = state.blatt;
+    var mitMinutenstrichen = (blatt === "minuten" || blatt === "minutenzahlen");
+    var mitMinutenzahlen   = (blatt === "minutenzahlen");
+    // Bei Minuten-Zahlen ruecken die Stunden-Ziffern nach innen, damit aussen
+    // Platz fuer die Minuten-Zahlen ist.
+    var stundenRadius = mitMinutenzahlen ? 58 : 66;
 
-    // (a) Feine Minutenstriche (nur beim Blatt "minuten").
-    if (blatt === "minuten") {
+    // (a) Feine Minutenstriche.
+    if (mitMinutenstrichen) {
       for (var m = 0; m < 60; m++) {
         if (m % 5 === 0) { continue; }                 // 5er-Marken sind die Stundenstriche
         var rm = (m * 6 - 90) * Math.PI / 180;
@@ -151,22 +159,35 @@
         class: "markierung-strich" + (s % 3 === 0 ? " voll" : "")
       }));
 
-      // (c) Ziffern 1..12 (ausser beim schlichten Blatt).
+      // (c) Stunden-Ziffern 1..12 (ausser beim schlichten Blatt).
       if (blatt !== "schlicht") {
-        var z = svgEl("text", { x: 100 + 66 * cos, y: 100 + 66 * sin, class: "markierung-zahl" });
+        var z = svgEl("text", { x: 100 + stundenRadius * cos, y: 100 + stundenRadius * sin, class: "markierung-zahl" });
         z.textContent = String(s);
         el.markierungen.appendChild(z);
       }
 
-      // (d) 24h-Ziffern innen (13..24) beim Blatt "zwanzigvier".
-      //     Die Stunde s steht fuer s+12 (z.B. 1-Uhr-Position = 13 Uhr),
-      //     12 steht fuer 24 Uhr.
+      // (d) Minuten-Zahlen (5,10,...,55) aussen – beim Blatt "minutenzahlen".
+      //     Die Stunde s entspricht der Minute s*5; bei 12 (oben) ist es 0 und
+      //     wird ausgelassen, damit dort die Stunden-12 frei steht.
+      if (mitMinutenzahlen && s !== 12) {
+        var zm = svgEl("text", { x: 100 + 73 * cos, y: 100 + 73 * sin, class: "markierung-zahl minutenzahl" });
+        zm.textContent = String(s * 5);
+        el.markierungen.appendChild(zm);
+      }
+
+      // (e) 24h-Ziffern innen (13..24) beim Blatt "zwanzigvier".
       if (blatt === "zwanzigvier") {
         var z24 = svgEl("text", { x: 100 + 52 * cos, y: 100 + 52 * sin, class: "markierung-zahl innen24" });
         z24.textContent = String(s === 12 ? 24 : s + 12);
         el.markierungen.appendChild(z24);
       }
     }
+  }
+
+  /** Setzt die Zeiger-Stil-Klasse am Uhr-SVG (standard|duenn|dick|pfeil). */
+  function wendeZeigerStilAn() {
+    el.svg.classList.remove("zeiger-stil-standard", "zeiger-stil-duenn", "zeiger-stil-dick", "zeiger-stil-pfeil");
+    el.svg.classList.add("zeiger-stil-" + state.zeiger);
   }
 
 
@@ -434,7 +455,7 @@
     try {
       window.localStorage.setItem(SPEICHER_SCHLUESSEL, JSON.stringify({
         level: state.level, punkte: state.punkte, rekord: state.rekord,
-        zeitformat: state.zeitformat, blatt: state.blatt
+        zeitformat: state.zeitformat, blatt: state.blatt, zeiger: state.zeiger
       }));
     } catch (e) { /* optional */ }
   }
@@ -447,7 +468,8 @@
       if (typeof d.punkte === "number") { state.punkte = Math.max(0, d.punkte); }
       if (typeof d.rekord === "number") { state.rekord = Math.max(0, d.rekord); }
       if (d.zeitformat === "12" || d.zeitformat === "24") { state.zeitformat = d.zeitformat; }
-      if (["schlicht", "zahlen", "minuten", "zwanzigvier"].indexOf(d.blatt) >= 0) { state.blatt = d.blatt; }
+      if (["schlicht", "zahlen", "minuten", "minutenzahlen", "zwanzigvier"].indexOf(d.blatt) >= 0) { state.blatt = d.blatt; }
+      if (["standard", "duenn", "dick", "pfeil"].indexOf(d.zeiger) >= 0) { state.zeiger = d.zeiger; }
     } catch (e) { /* ignorieren */ }
   }
 
@@ -480,7 +502,8 @@
       var setting = karte.dataset.setting, wert = karte.dataset.wert;
       var aktiv = (setting === "level"      && String(state.level) === wert)
                || (setting === "zeitformat" && state.zeitformat === wert)
-               || (setting === "blatt"      && state.blatt === wert);
+               || (setting === "blatt"      && state.blatt === wert)
+               || (setting === "zeiger"     && state.zeiger === wert);
       karte.classList.toggle("aktiv", aktiv);
     });
   }
@@ -501,8 +524,21 @@
       speichereStand();
       zeichneZifferblatt();                     // Ziffernblatt neu zeichnen
       aktualisiereUhr();
+    } else if (setting === "zeiger") {
+      state.zeiger = wert;
+      speichereStand();
+      wendeZeigerStilAn();                       // Zeiger-Stil anwenden
     }
     markiereAktiveOptionen();
+  }
+
+  /** Setzt Punkte und Rekord zurueck (mit kurzer Rueckfrage). */
+  function setzeFortschrittZurueck() {
+    if (!window.confirm("Wirklich Punkte und Rekord auf 0 zurücksetzen?")) { return; }
+    state.punkte = 0;
+    state.rekord = 0;
+    aktualisiereStatus();
+    speichereStand();
   }
 
 
@@ -541,6 +577,7 @@
     el.zahnrad.addEventListener("click", oeffneMenue);
     el.modalZu.addEventListener("click", schliesseMenue);
     el.modalFertig.addEventListener("click", schliesseMenue);
+    el.reset.addEventListener("click", setzeFortschrittZurueck);
     el.modal.addEventListener("click", function (e) { if (e.target === el.modal) { schliesseMenue(); } });
     el.optKarten.forEach(function (karte) {
       karte.addEventListener("click", function () { waehleOption(karte.dataset.setting, karte.dataset.wert); });
@@ -569,6 +606,7 @@
     erkenneGeraet();
     ladeStand();
     zeichneZifferblatt();
+    wendeZeigerStilAn();
     verbindeEvents();
     aktualisiereStatus();
     neueAufgabe();

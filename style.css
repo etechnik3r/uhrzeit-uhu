@@ -228,7 +228,8 @@ body {
   text-anchor: middle;
   dominant-baseline: central;
 }
-.markierung-zahl.innen24 { fill: var(--ring24); font-size: 9px; font-weight: 700; }
+.markierung-zahl.innen24    { fill: var(--ring24); font-size: 9px;   font-weight: 700; }
+.markierung-zahl.minutenzahl { fill: var(--ring24); font-size: 8.5px; font-weight: 700; }
 
 .zeiger {
   transform-box: view-box;
@@ -241,6 +242,16 @@ body {
 .zeiger-minute { stroke: var(--hand-minute); stroke-width: 6; }
 .uhr-svg.wird-gezogen .zeiger { transition: none; }
 .zeiger.aktiv { stroke: var(--hand-active); filter: drop-shadow(0 0 5px rgba(255, 138, 31, 0.9)); }
+
+/* --- Waehlbare Zeiger-Stile (Klasse am <svg>) --- */
+.uhr-svg.zeiger-stil-duenn .zeiger-stunde { stroke-width: 6.5; }
+.uhr-svg.zeiger-stil-duenn .zeiger-minute { stroke-width: 4; }
+.uhr-svg.zeiger-stil-dick  .zeiger-stunde { stroke-width: 13; }
+.uhr-svg.zeiger-stil-dick  .zeiger-minute { stroke-width: 9; }
+.uhr-svg.zeiger-stil-pfeil .zeiger-stunde { stroke-width: 7; }
+.uhr-svg.zeiger-stil-pfeil .zeiger-minute { stroke-width: 5; }
+/* Pfeil-Stil: Spitze ans Zeiger-Ende setzen (Marker aus <defs>). */
+.uhr-svg.zeiger-stil-pfeil .zeiger { marker-end: url(#pfeilspitze); }
 
 .hinweis {
   font-family: var(--font-display);
@@ -266,11 +277,12 @@ body {
   text-align: center;
 }
 
-/* Gleis: eine saubere Schiene mit Schwellen darunter. */
+/* Gleis: eine saubere Schiene mit Schwellen darunter. Der Bereich ist hoch
+   genug, damit der ganze Zug (inkl. Schornstein/Rauch) Platz hat. */
 .bahnhof {
   position: relative;
   max-width: 540px;
-  height: 58px;
+  height: 80px;
   margin: 0 auto 10px;
   overflow: hidden;
 }
@@ -284,13 +296,15 @@ body {
     linear-gradient(#6b5640, #6b5640) bottom/100% 4px no-repeat;
 }
 
-/* Der SVG-Zug ruht in der Mitte; faehrt nach LINKS los. */
+/* Der SVG-Zug ruht in der Mitte; faehrt nach LINKS los. Hoehe-basierte
+   Groesse, damit er nie oben abgeschnitten wird (Breite ergibt sich aus dem
+   Seitenverhaeltnis). */
 .zug {
   position: absolute;
-  bottom: 8px;
+  bottom: 10px;
   left: 50%;
-  width: min(72%, 240px);
-  height: auto;
+  height: 62px;
+  width: auto;
   transform: translateX(-50%);
   will-change: transform;
 }
@@ -419,6 +433,25 @@ body {
 .opt-name { font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; color: var(--ink); }
 .opt-text { font-size: 0.82rem; color: var(--muted); line-height: 1.15; }
 
+/* Mini-Vorschau der Zeiger-Stile in den Auswahl-Karten */
+.zeiger-vorschau { width: 42px; height: 36px; }
+
+/* Fortschritt-zuruecksetzen-Button (dezent rot, nicht versehentlich antippbar) */
+.reset-button {
+  width: 100%;
+  min-height: 54px;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #c0392b;
+  background: #fdeeec;
+  border: 2px solid #f3c6c0;
+  border-radius: 16px;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.reset-button:active { transform: scale(0.98); background: #fbe2de; }
+
 .modal-fertig {
   margin: 4px 20px 20px;
   min-height: 58px;
@@ -485,8 +518,9 @@ body {
 
 @media (max-width: 600px) and (max-height: 820px) {
   .ziel-zeit { font-size: clamp(2.6rem, 11vw, 4rem); }
-  .uhr-svg { width: min(90vw, 50vh, 420px); height: min(90vw, 50vh, 420px); }
-  .bahnhof { height: 50px; }
+  .uhr-svg { width: min(88vw, 46vh, 400px); height: min(88vw, 46vh, 400px); }
+  .bahnhof { height: 68px; }
+  .zug { height: 54px; }
   .abfahrt-button { font-size: 1.5rem; min-height: 56px; }
 }
 

@@ -29,7 +29,10 @@ Abfahrtszeit eingestellt werden.
 - **Einstellungs-Seite** über das Menü ⚙️ (oben rechts):
   - Schwierigkeit (Leicht / Mittel / Schwer) mit Symbolen und Erklärung,
   - Zeitformat **12 / 24 Stunden**,
-  - **4 Ziffernblätter** (Schlicht / Zahlen / Minutenstriche / 24‑Stunden‑Ring).
+  - **5 Ziffernblätter**: Schlicht / Zahlen / Minutenstriche / **Minuten-Zahlen
+    (5, 10, 15 …)** / 24‑Stunden‑Ring,
+  - **Zeiger-Stil**: Standard / Dünn / Dick / Pfeil (mit Spitze),
+  - **Punkte & Rekord zurücksetzen**.
 - **⭐ Punkte / 🏆 Rekord** mit Erklär-Popup beim Antippen.
 - **12-Stunden-Uhr ohne AM/PM:** Eine Zielzeit wie `18:00` wird einfach über die
   `6`-Uhr-Stellung eingestellt – die Zeiger-Stellung zählt (Vergleich auf
