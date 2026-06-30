@@ -3,46 +3,36 @@
   ============================================================================
   Uhrzeit-Uhu: Der Zeitreisen-Express
   ----------------------------------------------------------------------------
-  Ein kindgerechtes Lernspiel, das Grundschulkindern das Ablesen und Einstellen
-  der analogen sowie digitalen Uhrzeit beibringt.
+  Kindgerechtes Lernspiel (Grundschule) zum Lesen/Einstellen der Uhrzeit.
 
-  Diese Datei enthaelt NUR die Struktur (das Markup) des Spiels.
-  - Das Aussehen wird in  style.css  definiert.
-  - Die gesamte Spiellogik liegt in  game.js.
+  Struktur (dieses File) / Aussehen (style.css) / Logik (game.js) sind getrennt.
 
-  Bedienkonzept (mobil-/touch-optimiert):
-  - Stunde und Minute werden GETRENNT eingestellt – jeweils ueber grosse
-    Schrittknoepfe (- / +) ODER durch Ziehen am Zifferblatt.
-  - Beim Ziehen folgt immer nur der AKTIVE Zeiger dem Finger; das vermeidet
-    das versehentliche "Wegfliegen" der Zeiger.
+  BEDIENUNG (fuer Erstklaesser, viele Symbole, wenig Text):
+  - Man tippt EINEN Zeiger an -> er wird ORANGE (= ausgewaehlt).
+  - Dann zieht man ihn am Zifferblatt auf die richtige Stelle.
+      * grosser Zeiger (Minute): rastet in 5-Minuten-Schritten ein
+      * kleiner Zeiger (Stunde): gleitet wie in echt zwischen die Stunden
+        (z.B. bei "halb" steht er zwischen zwei Zahlen)
+  - Die Abfahrtszeit kann man sich per 🔊 vorlesen lassen.
+  - Stimmt die Zeit, faehrt der kleine Zug am Bahnhof los.
   ============================================================================
 -->
 <html lang="de">
 <head>
   <meta charset="UTF-8">
-  <!--
-    viewport: Sorgt fuer korrekte Skalierung auf Handys/Tablets.
-    - width=device-width: nutzt die echte Geraetebreite.
-    - user-scalable=no: verhindert versehentliches Zoomen beim Ziehen der Zeiger.
-    - viewport-fit=cover: nutzt auch den Bereich hinter Notch/abgerundeten Ecken,
-      damit das Layout den ganzen Handy-Bildschirm fuellt.
-  -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <meta name="description" content="Lernspiel zum Uhrzeit-Lesen fuer Kinder im Grundschulalter.">
-  <!-- Hilft mobilen Browsern, die Oberflaeche als "App" einzufaerben -->
   <meta name="theme-color" content="#2a6fdb">
   <meta name="mobile-web-app-capable" content="yes">
   <title>Uhrzeit-Uhu: Der Zeitreisen-Express</title>
   <link rel="stylesheet" href="style.css">
-  <!-- Ein kleines Emoji als Favicon (Browser-Tab-Symbol) ohne externe Bilddatei -->
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🦉</text></svg>">
 </head>
 
 <body>
 
   <!-- ====================================================================
-       1) TOP-BAR: Zeigt Level, Punktestand und Highscore.
-            Enthaelt ausserdem die Level-Auswahl-Buttons.
+       1) TOP-BAR (kompakt, symbolisch): Owl, Punkte ⭐, Rekord 🏆, Level 1/2/3
        ==================================================================== -->
   <header class="top-bar">
     <div class="marke">
@@ -50,72 +40,48 @@
       <span class="marke-text">Uhrzeit-Uhu</span>
     </div>
 
-    <!-- Anzeige der aktuellen Spielwerte -->
+    <!-- Punkte und Rekord als Symbol + grosse Zahl (ohne viel Text) -->
     <div class="status">
-      <div class="status-feld">
-        <span class="status-label">Level</span>
-        <span class="status-wert" id="anzeige-level">1</span>
+      <div class="stat" title="Punkte">
+        <span class="stat-icon" aria-hidden="true">⭐</span>
+        <span class="stat-wert" id="anzeige-punkte">0</span>
       </div>
-      <div class="status-feld">
-        <span class="status-label">Punkte</span>
-        <span class="status-wert" id="anzeige-punkte">0</span>
-      </div>
-      <div class="status-feld">
-        <span class="status-label">Rekord</span>
-        <span class="status-wert" id="anzeige-rekord">0</span>
+      <div class="stat" title="Rekord">
+        <span class="stat-icon" aria-hidden="true">🏆</span>
+        <span class="stat-wert" id="anzeige-rekord">0</span>
       </div>
     </div>
 
-    <!-- Level-Auswahl: Das Kind (oder die Begleitperson) kann die Stufe waehlen -->
-    <nav class="level-auswahl" aria-label="Level auswaehlen">
-      <button type="button" class="level-button" data-level="1">Stufe 1</button>
-      <button type="button" class="level-button" data-level="2">Stufe 2</button>
-      <button type="button" class="level-button" data-level="3">Stufe 3</button>
+    <!-- Level-Auswahl: aktive Stufe ist hervorgehoben (zeigt zugleich das Level) -->
+    <nav class="level-auswahl" aria-label="Schwierigkeit waehlen">
+      <button type="button" class="level-button" data-level="1" aria-label="Stufe 1">1</button>
+      <button type="button" class="level-button" data-level="2" aria-label="Stufe 2">2</button>
+      <button type="button" class="level-button" data-level="3" aria-label="Stufe 3">3</button>
     </nav>
   </header>
 
 
   <!-- ====================================================================
-       2) MAIN-AREA: Oben der Fahrplan (Zielzeit), darunter die Cockpit-Uhr.
-            Auf grossen Bildschirmen stehen beide nebeneinander (siehe CSS).
+       2) MAIN: Abfahrtszeit (gross, antippbar zum Vorlesen) + grosse Uhr
        ==================================================================== -->
   <main class="haupt-bereich">
 
-    <!-- ---- Der Fahrplan mit der digitalen Zielzeit ---- -->
-    <section class="fahrplan" aria-label="Fahrplan">
-      <h2 class="fahrplan-titel">🚂 Fahrplan</h2>
+    <!-- Abfahrtszeit: die ganze Anzeige ist ein Button -> tippen = vorlesen -->
+    <button type="button" class="ziel-anzeige" id="button-vorlesen"
+            aria-label="Abfahrtszeit anhören">
+      <span class="ziel-label">🚂 ABFAHRT</span>
+      <span class="ziel-zeit" id="anzeige-ziel">08:00</span>
+      <span class="ziel-hoeren">🔊 Hören</span>
+    </button>
 
-      <!-- Die grosse, deutlich lesbare digitale ZIELzeit -->
-      <div class="ziel-anzeige">
-        <span class="ziel-label">Abfahrt</span>
-        <span class="ziel-zeit" id="anzeige-ziel">08:00</span>
-      </div>
-
-      <!-- Button: liest die Zielzeit per Sprachausgabe vor (Web Speech API) -->
-      <button type="button" class="vorlese-button" id="button-vorlesen">
-        🔊 Zeit vorlesen
-      </button>
-
-      <!-- Dekorative Szene: der Uhu im Zug (auf sehr kleinen Schirmen ausgeblendet) -->
-      <div class="szene" aria-hidden="true">
-        <span class="szene-uhu">🦉</span>
-        <span class="szene-zug" id="szene-zug">🚂💨</span>
-      </div>
-    </section>
-
-
-    <!-- ---- Die interaktive analoge Cockpit-Uhr ---- -->
+    <!-- Die interaktive analoge Uhr -->
     <section class="uhr-bereich" aria-label="Analoge Uhr">
-
-      <!--
-        Die Uhr wird als inline-SVG gezeichnet (frei skalierbar, keine Bilddatei).
-        viewBox 0..200 -> Mittelpunkt liegt bei (100,100).
-        Die Zeiger werden per CSS-transform um genau diesen Punkt gedreht.
-      -->
       <svg id="uhr-svg" class="uhr-svg" viewBox="0 0 200 200" role="img"
            aria-label="Analoge Uhr zum Einstellen der Zeit">
 
-        <!-- Aeusserer Rand und Zifferblatt -->
+        <!-- Unsichtbare Flaeche, damit Beruehrungen ueberall auf der Uhr zaehlen -->
+        <rect x="0" y="0" width="200" height="200" fill="transparent"></rect>
+
         <circle cx="100" cy="100" r="96" class="uhr-rand"></circle>
         <circle cx="100" cy="100" r="90" class="uhr-blatt"></circle>
 
@@ -123,84 +89,44 @@
         <g id="zifferblatt-markierungen"></g>
 
         <!--
-          Die ZEIGER. Beide starten oben (12-Uhr) und werden per JS gedreht.
-          Der jeweils AKTIVE Zeiger bekommt zusaetzlich die Klasse "aktiv"
-          (per JS) und wird dadurch optisch hervorgehoben.
-
-          Hinweis: Die transparenten "griff"-Linien liegen unsichtbar UEBER den
-          Zeigern und vergroessern die Beruehrflaeche fuers Ziehen mit dem Finger.
+          Die ZEIGER. Antippen waehlt einen aus (er wird per "aktiv"-Klasse
+          orange). Der ausgewaehlte Zeiger wird per JS nach oben sortiert,
+          damit man ihn auch bei Ueberdeckung (z.B. 12:00) gut sieht.
         -->
         <line id="zeiger-stunde" class="zeiger zeiger-stunde"
-              x1="100" y1="100" x2="100" y2="52"></line>
+              x1="100" y1="100" x2="100" y2="54"></line>
         <line id="zeiger-minute" class="zeiger zeiger-minute"
-              x1="100" y1="100" x2="100" y2="30"></line>
+              x1="100" y1="100" x2="100" y2="28"></line>
 
-        <!-- Mittelpunkt-Kappe (verdeckt den Ansatz der Zeiger) -->
-        <circle cx="100" cy="100" r="6" class="uhr-mitte"></circle>
+        <!-- Mittelpunkt-Kappe (bleibt immer ganz oben) -->
+        <circle id="uhr-kappe" cx="100" cy="100" r="7" class="uhr-mitte"></circle>
       </svg>
 
-      <!-- Bedien-Hinweis direkt an der Uhr (zeigt per JS den aktiven Zeiger an) -->
-      <p class="zieh-hinweis" id="zieh-hinweis">👆 Ziehe am Zifferblatt oder nutze die Knöpfe</p>
-
-      <!-- Die digitale Anzeige der AKTUELL eingestellten Zeit -->
-      <div class="ist-anzeige">
-        <span class="ist-label">Eingestellt:</span>
-        <span class="ist-zeit" id="anzeige-ist">08:00</span>
-      </div>
+      <!-- EIN gemeinsamer Hinweis: zeigt den aktiven Zeiger bzw. das Feedback -->
+      <p class="hinweis" id="hinweis-text" role="status" aria-live="polite">
+        👆 Tippe einen Zeiger an
+      </p>
     </section>
   </main>
 
 
   <!-- ====================================================================
-       3) BOTTOM-AREA: Getrennte Stunden-/Minuten-Steller + "Abfahrt!".
+       3) BOTTOM: kleiner Bahnhof mit Zug + grosser "Abfahrt!"-Button
        ==================================================================== -->
   <footer class="steuerung">
 
-    <!-- Freundlicher Hinweistext fuer Rueckmeldungen (Erfolg/Fehler) -->
-    <p class="hinweis" id="hinweis-text" role="status" aria-live="polite">
-      Tipp: Stelle zuerst die Stunde ein, dann die Minute.
-    </p>
-
-    <!--
-      Zwei getrennte Steller: einer fuer die STUNDE, einer fuer die MINUTE.
-      Die jeweils aktive Zeile (data-modus) ist hervorgehoben und legt fest,
-      welcher Zeiger beim Ziehen am Zifferblatt bewegt wird.
-    -->
-    <div class="einsteller">
-
-      <!-- STUNDE -->
-      <div class="stepper-zeile aktiv" id="zeile-stunde" data-modus="stunde">
-        <button type="button" class="stepper-btn" data-modus="stunde" data-richtung="-1"
-                aria-label="Stunde verringern">−</button>
-        <div class="stepper-mitte" data-modus="stunde">
-          <span class="stepper-label">🕐 Stunde</span>
-          <span class="stepper-wert" id="wert-stunde">12</span>
-        </div>
-        <button type="button" class="stepper-btn" data-modus="stunde" data-richtung="1"
-                aria-label="Stunde erhöhen">+</button>
-      </div>
-
-      <!-- MINUTE -->
-      <div class="stepper-zeile" id="zeile-minute" data-modus="minute">
-        <button type="button" class="stepper-btn" data-modus="minute" data-richtung="-1"
-                aria-label="Minute verringern">−</button>
-        <div class="stepper-mitte" data-modus="minute">
-          <span class="stepper-label">🕧 Minute</span>
-          <span class="stepper-wert" id="wert-minute">00</span>
-        </div>
-        <button type="button" class="stepper-btn" data-modus="minute" data-richtung="1"
-                aria-label="Minute erhöhen">+</button>
-      </div>
+    <!-- Bahnhof-Szene: der Zug steht am Gleis und faehrt bei Erfolg los. -->
+    <div class="bahnhof" aria-hidden="true">
+      <span class="bahnhof-haus">🚉</span>
+      <span class="zug" id="zug">🚂🚃🚃</span>
     </div>
 
-    <!-- Der grosse zentrale Pruef-Button -->
+    <!-- Pruef-Button: gruen + Zug = "losfahren" -->
     <button type="button" class="abfahrt-button" id="button-abfahrt">
       🚂 Abfahrt!
     </button>
   </footer>
 
-
-  <!-- Skript am Ende: so existieren alle Elemente, bevor JS darauf zugreift. -->
   <script src="game.js"></script>
 </body>
 </html>

@@ -1,32 +1,28 @@
 /* ===========================================================================
    Uhrzeit-Uhu: Der Zeitreisen-Express  –  Stylesheet (style.css)
    ---------------------------------------------------------------------------
-   Hier wird ausschliesslich das AUSSEHEN definiert. Die Logik steckt in game.js,
-   die Struktur in index.html.
-
-   WICHTIG (mobil-first): Das Layout ist fuer Handys im Hochformat ausgelegt und
-   wird auf grossen Bildschirmen (Tablet quer / Desktop) zweispaltig erweitert.
+   Mobil-first, fuer Erstklaesser: wenig Text, grosse Symbole, grosse Uhr,
+   grosse Tap-Targets. Eingestellt wird die Uhr durch ZIEHEN der Zeiger.
 
    Aufbau:
      1. Design-Variablen
      2. Grund-Layout (3 Zonen)
-     3. Top-Bar
-     4. Main-Area: Fahrplan + Uhr (inkl. korrekt drehender Zeiger)
-     5. Bottom-Area: getrennte Stunden-/Minuten-Steller + Abfahrt-Button
+     3. Top-Bar (kompakt, symbolisch)
+     4. Abfahrtszeit (gross, antippbar) + grosse Uhr inkl. Zeiger
+     5. Bahnhof-Szene mit Zug + "Abfahrt!"-Button
      6. Animationen
-     7. Responsives Verhalten (Handy hochkant, Tablet/Desktop, Touch-Geraete)
+     7. Responsives Verhalten
    =========================================================================== */
 
 
-/* ---------------------------------------------------------------------------
-   1) DESIGN-VARIABLEN  (zentral anpassbar)
-   --------------------------------------------------------------------------- */
+/* 1) DESIGN-VARIABLEN ------------------------------------------------------ */
 :root {
   --farbe-himmel:      #2a6fdb;
   --farbe-himmel-hell: #5b9bf0;
   --farbe-sonne:       #ffd23f;
   --farbe-erfolg:      #2ecc71;
   --farbe-erfolg-dkl:  #239a55;
+  --farbe-aktiv:       #ff7a18;   /* kraeftiges Orange fuer den aktiven Zeiger */
   --farbe-hinweis:     #ff8c42;
   --farbe-karte:       #ffffff;
   --farbe-text:        #1f2d3d;
@@ -34,23 +30,16 @@
   --farbe-schiene:     #6b7a8f;
 
   --radius:   18px;
-  --tap-min:  60px;            /* Mindestgroesse fuer Tap-Targets             */
+  --tap-min:  60px;
   --schatten: 0 6px 16px rgba(0, 0, 0, 0.18);
 }
 
 
-/* ---------------------------------------------------------------------------
-   2) GRUND-LAYOUT
-   --------------------------------------------------------------------------- */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* 2) GRUND-LAYOUT ---------------------------------------------------------- */
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 html {
   height: 100%;
-  /* Verhindert automatisches Vergroessern von Text auf Mobilgeraeten */
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }
@@ -58,15 +47,11 @@ html {
 body {
   font-family: "Comic Sans MS", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
   color: var(--farbe-text);
-
   background: linear-gradient(160deg, var(--farbe-himmel) 0%, var(--farbe-himmel-hell) 100%);
   background-attachment: fixed;
 
   display: flex;
   flex-direction: column;
-  /* 100dvh = "dynamic viewport height": beruecksichtigt ein-/ausblendende
-     Browser-Leisten auf dem Handy, damit nichts abgeschnitten wird.
-     min-height (statt height) erlaubt Scrollen, falls der Inhalt doch hoeher ist. */
   min-height: 100vh;
   min-height: 100dvh;
 
@@ -74,168 +59,128 @@ body {
   user-select: none;
   -webkit-tap-highlight-color: transparent;
 
-  /* Sicherheitsabstand zu Notch/Home-Indikator (iPhone & Co.) */
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
            env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 
 
-/* ---------------------------------------------------------------------------
-   3) TOP-BAR
-   --------------------------------------------------------------------------- */
+/* 3) TOP-BAR (kompakt, eine Zeile) ----------------------------------------- */
 .top-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding: 10px 16px;
+  gap: 8px;
+  padding: 6px 12px;
   background: rgba(0, 0, 0, 0.18);
   color: var(--farbe-text-hell);
 }
 
-.marke {
+.marke { display: flex; align-items: center; gap: 6px; }
+.marke-emoji { font-size: 1.8rem; }
+.marke-text {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--farbe-sonne);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+}
+
+/* Punkte/Rekord: Symbol + grosse Zahl */
+.status { display: flex; gap: 10px; }
+.stat {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 1.5rem;
-  font-weight: bold;
-}
-.marke-emoji { font-size: 1.9rem; }
-.marke-text  { color: var(--farbe-sonne); text-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-
-.status { display: flex; gap: 8px; }
-.status-feld {
+  gap: 5px;
   background: rgba(255, 255, 255, 0.15);
-  border-radius: var(--radius);
-  padding: 5px 14px;
-  text-align: center;
-  min-width: 62px;
+  border-radius: 999px;
+  padding: 4px 12px;
 }
-.status-label {
-  display: block;
-  font-size: 0.7rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  opacity: 0.85;
-}
-.status-wert { display: block; font-size: 1.4rem; font-weight: bold; }
+.stat-icon { font-size: 1.3rem; }
+.stat-wert { font-size: 1.4rem; font-weight: bold; min-width: 1ch; text-align: center; }
 
+/* Level-Auswahl: grosse, runde Zahl-Buttons */
 .level-auswahl { display: flex; gap: 6px; }
 .level-button {
-  min-height: 44px;
-  padding: 6px 14px;
-  font: bold 0.95rem inherit;
+  width: 44px;
+  height: 44px;
+  font-size: 1.3rem;
+  font-weight: bold;
   font-family: inherit;
   color: var(--farbe-text);
   background: var(--farbe-karte);
   border: 3px solid transparent;
-  border-radius: var(--radius);
+  border-radius: 50%;
   cursor: pointer;
   transition: transform 0.1s ease, border-color 0.15s ease;
 }
-.level-button:active { transform: scale(0.95); }
-.level-button.aktiv  { border-color: var(--farbe-sonne); background: var(--farbe-sonne); }
+.level-button:active { transform: scale(0.92); }
+.level-button.aktiv { border-color: var(--farbe-sonne); background: var(--farbe-sonne); }
 
 
-/* ---------------------------------------------------------------------------
-   4) MAIN-AREA: Fahrplan + Uhr
-   --------------------------------------------------------------------------- */
+/* 4) ABFAHRTSZEIT + UHR ----------------------------------------------------- */
 .haupt-bereich {
   flex: 1;
   display: flex;
-  flex-direction: column;     /* Handy hochkant: untereinander           */
-  flex-wrap: wrap;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  padding: 12px;
+  gap: 10px;
+  padding: 10px;
 }
 
-/* ---- Fahrplan-Karte ---- */
-.fahrplan {
-  background: var(--farbe-karte);
-  border-radius: var(--radius);
-  box-shadow: var(--schatten);
-  padding: 16px 20px;
-  width: 340px;
-  max-width: 100%;
-  text-align: center;
-}
-.fahrplan-titel { font-size: 1.4rem; margin-bottom: 10px; }
-
+/* Abfahrtszeit: ganze Anzeige ist ein Button (tippen = vorlesen) */
 .ziel-anzeige {
-  background: var(--farbe-text);
-  color: var(--farbe-sonne);
-  border-radius: var(--radius);
-  padding: 12px;
-  margin-bottom: 12px;
-}
-.ziel-label {
-  display: block;
-  font-size: 0.85rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: #b9c4d0;
-}
-.ziel-zeit {
-  display: block;
-  font-family: "Courier New", monospace;
-  font-variant-numeric: tabular-nums;
-  font-weight: bold;
-  /* clamp() macht die Schrift responsiv: nie kleiner als 2.8rem, ideal 11vw,
-     hoechstens 5rem. */
-  font-size: clamp(2.8rem, 11vw, 5rem);
-  line-height: 1.1;
-}
-
-.vorlese-button {
-  min-height: 56px;
-  width: 100%;
-  padding: 8px 10px;
-  font-family: inherit;
-  font-weight: bold;
-  /* Maximal grosse Schrift, die noch auf den Button passt: skaliert mit der
-     Breite (clamp) und bleibt in einer Zeile (nowrap). */
-  font-size: clamp(1.5rem, 7.5vw, 2.4rem);
-  white-space: nowrap;
-  line-height: 1.1;
-  color: var(--farbe-text);
-  background: var(--farbe-sonne);
-  border: none;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: transform 0.1s ease;
-}
-.vorlese-button:active { transform: scale(0.97); }
-
-.szene {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  font-size: 2.2rem;
-  margin-top: 12px;
-  overflow: hidden;
-}
-
-/* ---- Uhr-Bereich ---- */
-.uhr-bereich {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
+  gap: 2px;
+  background: var(--farbe-text);
+  border: none;
+  border-radius: var(--radius);
+  box-shadow: var(--schatten);
+  padding: 8px 28px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.1s ease;
+}
+.ziel-anzeige:active { transform: scale(0.98); }
+.ziel-label {
+  font-size: 0.85rem;
+  letter-spacing: 2px;
+  color: #b9c4d0;
+}
+.ziel-zeit {
+  font-family: "Courier New", monospace;
+  font-variant-numeric: tabular-nums;
+  font-weight: bold;
+  color: var(--farbe-sonne);
+  /* Gross und responsiv */
+  font-size: clamp(3rem, 13vw, 5rem);
+  line-height: 1.05;
+}
+.ziel-hoeren {
+  font-size: clamp(1.1rem, 4.5vw, 1.5rem);
+  font-weight: bold;
+  color: var(--farbe-sonne);
+}
+
+/* Uhr-Bereich fuellt den restlichen Platz und zentriert die (grosse) Uhr */
+.uhr-bereich {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
 }
 
 .uhr-svg {
-  /* Responsive Groesse: nimmt das KLEINERE aus Breite UND Hoehe, damit die
-     Uhr auf hohen schmalen Handys nicht den ganzen Platz frisst und die
-     Steller darunter sichtbar bleiben. */
-  width: min(82vw, 44vh, 360px);
-  height: min(82vw, 44vh, 360px);
+  /* GROSS: nimmt das Kleinere aus Breite/Hoehe, damit die Uhr maximal wird,
+     ohne die Bahnhof-Szene + Abfahrt-Button zu verdraengen. */
+  width: min(92vw, 56vh, 460px);
+  height: min(92vw, 56vh, 460px);
   filter: drop-shadow(0 8px 18px rgba(0, 0, 0, 0.25));
-  /* touch-action: none ist ENTSCHEIDEND: verhindert, dass der Browser beim
-     Ziehen der Zeiger die Seite scrollt oder zoomt. */
+  /* touch-action: none ist wichtig: kein Scrollen/Zoomen beim Ziehen. */
   touch-action: none;
 }
 
@@ -249,155 +194,89 @@ body {
   fill: var(--farbe-text);
   font-family: inherit;
   font-weight: bold;
-  font-size: 13px;
+  font-size: 14px;
   text-anchor: middle;
   dominant-baseline: central;
 }
 
 /*
-  DIE ZEIGER – korrekte Drehung um die Uhrmitte.
-
-  Wichtig fuer Touch-Geraete:
-  Wir drehen die Zeiger ueber die CSS-Eigenschaft "transform" (per JS gesetzt),
-  NICHT ueber das SVG-Attribut "transform". In Kombination mit:
-     transform-box: view-box;        -> Bezugssystem ist die viewBox (0..200)
-     transform-origin: 100px 100px;  -> Drehpunkt ist die Uhrmitte (100,100)
-  dreht sich jeder Zeiger sauber um den Mittelpunkt. Genau hier lag der frueher
-  beobachtete Fehler: Wird stattdessen das SVG-Attribut animiert, interpolieren
-  manche (vor allem mobile) Browser um die Ecke (0,0) – der Zeiger "fliegt" dann
-  quer durchs Bild. Diese Variante vermeidet das zuverlaessig.
+  ZEIGER – Drehung sauber um die Uhrmitte (CSS-transform mit view-box-Bezug).
+  transform-box/-origin sorgen dafuer, dass sich der Zeiger um (100,100) dreht
+  (nicht um die Ecke) – wichtig fuer korrektes Verhalten auf Touch-Geraeten.
 */
 .zeiger {
   transform-box: view-box;
   transform-origin: 100px 100px;
   stroke-linecap: round;
-  transition: transform 0.2s ease;
+  transition: transform 0.18s ease;
+  cursor: pointer;
 }
-.zeiger-stunde { stroke: var(--farbe-text);   stroke-width: 8; }
+.zeiger-stunde { stroke: var(--farbe-text);   stroke-width: 9; }
 .zeiger-minute { stroke: var(--farbe-himmel); stroke-width: 6; }
 
-/* Waehrend des Ziehens schalten wir die weiche Animation ab, damit der
-   aktive Zeiger dem Finger ohne Verzoegerung folgt. */
+/* Waehrend des Ziehens keine weiche Animation (Zeiger folgt sofort). */
 .uhr-svg.wird-gezogen .zeiger { transition: none; }
 
-/* Der AKTIVE (gerade einstellbare) Zeiger wird hervorgehoben, damit das Kind
-   sieht, welcher Zeiger sich beim Ziehen bewegt. */
+/* Der ausgewaehlte (aktive) Zeiger wird kraeftig orange + leuchtet leicht. */
 .zeiger.aktiv {
-  stroke: var(--farbe-hinweis);
-  filter: drop-shadow(0 0 4px rgba(255, 140, 66, 0.8));
-}
-
-.zieh-hinweis {
-  color: var(--farbe-text-hell);
-  font-size: 0.95rem;
-  opacity: 0.9;
-  text-align: center;
-}
-
-.ist-anzeige {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  background: rgba(0, 0, 0, 0.22);
-  color: var(--farbe-text-hell);
-  border-radius: var(--radius);
-  padding: 6px 18px;
-}
-.ist-label { font-size: 0.95rem; opacity: 0.9; }
-.ist-zeit {
-  font-family: "Courier New", monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 1.9rem;
-  font-weight: bold;
-}
-
-
-/* ---------------------------------------------------------------------------
-   5) BOTTOM-AREA: getrennte Stunden-/Minuten-Steller + Abfahrt
-   --------------------------------------------------------------------------- */
-.steuerung {
-  background: rgba(0, 0, 0, 0.18);
-  padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
-  text-align: center;
+  stroke: var(--farbe-aktiv);
+  filter: drop-shadow(0 0 5px rgba(255, 122, 24, 0.85));
 }
 
 .hinweis {
   color: var(--farbe-text-hell);
-  font-size: 1.1rem;
+  font-size: 1.15rem;
+  font-weight: bold;
+  text-align: center;
   min-height: 1.5em;
-  margin-bottom: 10px;
   transition: color 0.2s ease;
+  padding: 0 8px;
 }
-.hinweis.erfolg { color: var(--farbe-erfolg);  font-weight: bold; }
-.hinweis.fehler { color: var(--farbe-hinweis); font-weight: bold; }
+.hinweis.erfolg { color: #d6ffe6; }
+.hinweis.fehler { color: #ffe2cc; }
 
-/* Container der beiden Steller-Zeilen */
-.einsteller {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+
+/* 5) BAHNHOF-SZENE + ABFAHRT-BUTTON ---------------------------------------- */
+.steuerung {
+  background: rgba(0, 0, 0, 0.18);
+  padding: 8px 14px calc(12px + env(safe-area-inset-bottom));
+  text-align: center;
+}
+
+/* Der Bahnhof: ein Gleis (untere Linie mit Schwellen), Bahnhofshaus + Zug. */
+.bahnhof {
+  position: relative;
   max-width: 480px;
-  margin: 0 auto 12px;
-}
-
-/* Eine Steller-Zeile:  [ − ]   Label/Wert   [ + ] */
-.stepper-zeile {
+  height: 56px;
+  margin: 0 auto 8px;
   display: flex;
-  align-items: stretch;
-  gap: 10px;
-  background: var(--farbe-karte);
-  border: 3px solid transparent;
-  border-radius: var(--radius);
-  box-shadow: var(--schatten);
-  padding: 6px;
-  transition: border-color 0.15s ease, background 0.15s ease;
+  align-items: flex-end;
+  overflow: hidden;                         /* abfahrender Zug wird abgeschnitten */
+  /* Gleis: dunten eine Schiene, darauf gleichmaessige "Schwellen" */
+  border-bottom: 6px solid #5b4a36;
+  background:
+    repeating-linear-gradient(90deg,
+      rgba(0,0,0,0.0) 0 16px,
+      rgba(0,0,0,0.18) 16px 20px) left bottom / 100% 12px no-repeat;
 }
-/* Die aktive Zeile (deren Zeiger beim Ziehen bewegt wird) ist hervorgehoben. */
-.stepper-zeile.aktiv {
-  border-color: var(--farbe-hinweis);
-  background: #fff7f0;
-}
-
-.stepper-mitte {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-.stepper-label { font-size: 0.9rem; color: var(--farbe-schiene); }
-.stepper-wert {
-  font-family: "Courier New", monospace;
-  font-variant-numeric: tabular-nums;
-  font-size: 2.2rem;
-  font-weight: bold;
+.bahnhof-haus { font-size: 2rem; line-height: 1; padding-bottom: 4px; }
+.zug {
+  font-size: 2.1rem;
   line-height: 1;
+  padding-bottom: 4px;
+  margin-left: 4px;
+  white-space: nowrap;
+  will-change: transform;
 }
+/* Zug faehrt nach rechts aus dem Bild (bei richtiger Antwort). */
+.zug.faehrt { animation: losfahren 1.3s ease-in forwards; }
 
-/* Die grossen − / + Knoepfe */
-.stepper-btn {
-  min-width: 70px;
-  min-height: var(--tap-min);
-  font-size: 2rem;
-  font-weight: bold;
-  font-family: inherit;
-  color: var(--farbe-text-hell);
-  background: var(--farbe-himmel);
-  border: none;
-  border-radius: 14px;
-  cursor: pointer;
-  transition: transform 0.1s ease, background 0.15s ease;
-}
-.stepper-btn:active { transform: scale(0.92); background: var(--farbe-himmel-hell); }
-
-/* Der grosse zentrale "Abfahrt!"-Button */
 .abfahrt-button {
   width: 100%;
   max-width: 480px;
   min-height: var(--tap-min);
   padding: 12px 24px;
-  font: bold 1.6rem inherit;
+  font: bold 1.7rem inherit;
   font-family: inherit;
   color: var(--farbe-text-hell);
   background: var(--farbe-erfolg);
@@ -408,27 +287,22 @@ body {
   cursor: pointer;
   transition: transform 0.1s ease;
 }
-.abfahrt-button:active {
-  transform: translateY(3px);
-  border-bottom-width: 2px;
-}
+.abfahrt-button:active { transform: translateY(3px); border-bottom-width: 2px; }
 
 
-/* ---------------------------------------------------------------------------
-   6) ANIMATIONEN
-   --------------------------------------------------------------------------- */
+/* 6) ANIMATIONEN ----------------------------------------------------------- */
 
-/* (a) FEHLER: leichtes Schuetteln der Uhr. */
+/* FEHLER: Uhr schuettelt kurz. */
 @keyframes schuetteln {
   0%, 100% { transform: translateX(0); }
-  20%      { transform: translateX(-10px) rotate(-2deg); }
-  40%      { transform: translateX(10px)  rotate(2deg); }
-  60%      { transform: translateX(-7px)  rotate(-1deg); }
-  80%      { transform: translateX(7px)   rotate(1deg); }
+  20% { transform: translateX(-10px) rotate(-2deg); }
+  40% { transform: translateX(10px)  rotate(2deg); }
+  60% { transform: translateX(-7px)  rotate(-1deg); }
+  80% { transform: translateX(7px)   rotate(1deg); }
 }
 .uhr-svg.schuetteln { animation: schuetteln 0.5s ease; }
 
-/* (b) ERFOLG: gruenes Aufleuchten der Uhr. */
+/* ERFOLG: Uhr leuchtet gruen auf. */
 @keyframes erfolg-puls {
   0%   { filter: drop-shadow(0 8px 18px rgba(0,0,0,0.25)); }
   50%  { filter: drop-shadow(0 0 28px var(--farbe-erfolg)) brightness(1.1); }
@@ -436,98 +310,53 @@ body {
 }
 .uhr-svg.erfolg { animation: erfolg-puls 0.9s ease; }
 
-/* (c) ZUG-ABFAHRT: der Zug faehrt nach rechts aus dem Bild. */
-@keyframes zug-abfahrt {
-  0%   { transform: translateX(0);     opacity: 1; }
-  70%  { transform: translateX(180px); opacity: 1; }
-  100% { transform: translateX(260px); opacity: 0; }
+/* ZUG faehrt los. */
+@keyframes losfahren {
+  0%   { transform: translateX(0); }
+  15%  { transform: translateX(-6px); }   /* kurz "anrucken" */
+  100% { transform: translateX(120vw); }
 }
-.szene-zug.faehrt { animation: zug-abfahrt 1s ease-in forwards; }
 
 
-/* ---------------------------------------------------------------------------
-   7) RESPONSIVES VERHALTEN
-   --------------------------------------------------------------------------- */
+/* 7) RESPONSIVES VERHALTEN ------------------------------------------------- */
 
-/* (A) GROSSE Bildschirme (Tablet quer / Desktop): zweispaltig nebeneinander. */
-@media (min-width: 820px) {
+/* (A) GROSSE Bildschirme (Tablet quer / Desktop): Zeit + Uhr nebeneinander. */
+@media (min-width: 900px) {
   .haupt-bereich {
     flex-direction: row;
-    gap: 32px;
+    flex-wrap: wrap;
+    gap: 40px;
     padding: 24px;
   }
-  .fahrplan      { padding: 24px; }
-  .fahrplan-titel { font-size: 1.6rem; }
-  .uhr-svg       { width: min(46vw, 400px); height: min(46vw, 400px); }
+  .uhr-svg { width: min(48vw, 70vh, 480px); height: min(48vw, 70vh, 480px); }
 }
 
-/* (B) HANDYS (hochkant, bis 600px): kompakt, damit Uhr UND Steller UND der
-   Abfahrt-Button gemeinsam auf den Bildschirm passen (ohne Scrollen). */
+/* (B) HANDYS hochkant (bis 600px): Kopfzeile schlank, Uhr gross halten. */
 @media (max-width: 600px) {
-  /* Kopfzeile schlank halten */
-  .top-bar { gap: 8px; padding: 8px 12px; }
-  .marke   { font-size: 1.3rem; }
-  .marke-emoji { font-size: 1.6rem; }
-  .status-feld { min-width: 50px; padding: 4px 10px; }
-  .status-wert { font-size: 1.2rem; }
-  .level-button { min-height: 40px; padding: 5px 12px; font-size: 0.85rem; }
-
-  /* Fahrplan-Karte kompakter */
+  .marke-text { display: none; }            /* nur das Owl-Symbol zeigen */
+  .top-bar { padding: 5px 10px; }
+  .level-button { width: 42px; height: 42px; }
   .haupt-bereich { gap: 8px; padding: 8px; }
-  .fahrplan { padding: 10px 14px; }
-  .fahrplan-titel { display: none; }       /* "ABFAHRT" steht bereits darunter */
-  .ziel-anzeige { padding: 6px 8px; margin-bottom: 8px; }
-  .ziel-label { font-size: 0.75rem; }
-  .vorlese-button { min-height: 50px; }
-
-  /* Platzfresser ausblenden:
-     - dekorative Zug-Szene (rein schmueckend)
-     - "Eingestellt"-Anzeige (die Steller zeigen die Werte ohnehin) */
-  .szene { display: none; }
-  .ist-anzeige { display: none; }
-
-  /* Uhr an die verfuegbare Hoehe anpassen (Hoehe begrenzt die Groesse). */
-  .uhr-bereich { gap: 4px; }
-  .uhr-svg { width: min(74vw, 34vh, 300px); height: min(74vw, 34vh, 300px); }
-  .zieh-hinweis { font-size: 0.8rem; }
-
-  /* Steller kompakt, aber weiterhin gut antippbar */
-  .einsteller { gap: 7px; margin-bottom: 7px; }
-  .stepper-zeile { padding: 4px; }
-  .stepper-label { font-size: 0.8rem; }
-  .stepper-wert { font-size: 1.6rem; }
-  .stepper-btn  { min-width: 64px; min-height: 54px; font-size: 1.8rem; }
-  .abfahrt-button { font-size: 1.35rem; min-height: 52px; }
-
-  /* Kopfzeile schlanker */
-  .steuerung { padding: 8px 12px calc(10px + env(safe-area-inset-bottom)); }
-  .hinweis { font-size: 1rem; margin-bottom: 6px; }
+  .ziel-anzeige { padding: 6px 22px; }
 }
 
-/* (C) NIEDRIGERE Handys (z.B. mit eingeblendeter Browser-Leiste): noch enger,
-   damit Uhr + Steller + Abfahrt-Button gemeinsam sichtbar bleiben. */
+/* (C) Niedrigere Handys (mit Browser-Leiste): Uhr etwas kleiner, alles passt. */
 @media (max-width: 600px) and (max-height: 820px) {
-  .uhr-svg { width: min(68vw, 27vh, 270px); height: min(68vw, 27vh, 270px); }
-  .vorlese-button { min-height: 44px; font-size: clamp(1.3rem, 6.5vw, 2rem); }
-  .ziel-zeit { font-size: clamp(2.2rem, 8.5vw, 3.4rem); }
-  .stepper-btn { min-height: 48px; }
-  .stepper-wert { font-size: 1.5rem; }
-  .top-bar { padding: 5px 12px; }
-  .level-button { min-height: 38px; }
-  .zieh-hinweis { display: none; }   /* Hinweis steht auch in der Steller-Zeile */
-  .hinweis { margin-bottom: 4px; }
+  .ziel-zeit { font-size: clamp(2.6rem, 11vw, 4rem); }
+  .uhr-svg { width: min(90vw, 50vh, 420px); height: min(90vw, 50vh, 420px); }
+  .bahnhof { height: 48px; }
+  .abfahrt-button { font-size: 1.5rem; min-height: 56px; }
 }
 
-/* (D) Sehr NIEDRIGE Bildschirme (Handy quer): Uhr verkleinern, Deko weg. */
-@media (max-height: 560px) {
-  .uhr-svg { width: min(42vh, 240px); height: min(42vh, 240px); }
-  .szene, .ist-anzeige { display: none; }
+/* (D) Sehr niedrige Schirme (Handy quer): Uhr klein, Bahnhof weg. */
+@media (max-height: 540px) {
+  .uhr-svg { width: min(60vh, 260px); height: min(60vh, 260px); }
+  .bahnhof { display: none; }
 }
 
-/* (E) TOUCH-Geraete: noch groessere Tap-Targets, kein Hover noetig. */
+/* (E) TOUCH-Geraete: kein Hover noetig (alles per Tap erreichbar). */
 @media (pointer: coarse) {
   :root { --tap-min: 64px; }
-  .stepper-btn { min-width: 76px; }
 }
 
 /* (F) Barrierefreiheit: bei "reduzierter Bewegung" keine Animationen. */
@@ -535,7 +364,7 @@ body {
   .zeiger,
   .uhr-svg.schuetteln,
   .uhr-svg.erfolg,
-  .szene-zug.faehrt {
+  .zug.faehrt {
     animation: none !important;
     transition: none !important;
   }

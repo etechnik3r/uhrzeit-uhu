@@ -14,15 +14,17 @@ Abfahrtszeit eingestellt werden.
 - **Drei Schwierigkeitsstufen** (automatisch steigend oder frei wählbar):
   - **Stufe 1:** volle und halbe Stunden (z. B. `08:00`, `14:30`)
   - **Stufe 2:** Viertelstunden (z. B. `15:15`, `09:45`)
-  - **Stufe 3:** minutengenaue Zeiten im 24-Stunden-Format (z. B. `12:07`, `23:55`)
-- **Touch-optimierte Steuerung – Stunde und Minute getrennt** (wie ein
-  mobiler Uhrzeit-Picker):
-  - getrennte große `− / +`-Steller für **Stunde** und **Minute**
-    (Minuten-Schritt je Stufe: 30 / 15 / 1 Minute)
-  - **Drag & Drop** der Zeiger per Finger/Maus: es bewegt sich immer nur der
-    *aktive* Zeiger und rastet magnetisch ein – so kann nichts „wegfliegen".
-- **Fließender Stundenzeiger** – bewegt sich wie bei einer echten Uhr mit den
-  Minuten mit.
+  - **Stufe 3:** alle 5‑Minuten‑Marken, volles Tagesbild (z. B. `12:05`, `23:55`)
+- **Direktes Stellen der Zeiger (wie eine echte Uhr):**
+  - einen Zeiger **antippen** → er wird **orange** (= ausgewählt),
+  - dann am Zifferblatt auf die richtige Stelle **ziehen** (Finger/Maus).
+  - der große (Minuten-)Zeiger rastet in **5‑Minuten‑Schritten** ein,
+  - der kleine (Stunden-)Zeiger **gleitet fließend** zwischen die Stunden
+    (bei „halb" steht er genau zwischen zwei Zahlen – wie in echt).
+  - Keine +/- Knöpfe – das Kind stellt die Uhr selbst.
+- **Wenig Text, viele Symbole** – auch für Kinder, die noch nicht lesen können
+  (Zeit per 🔊 anhörbar, Punkte ⭐ / Rekord 🏆 als Symbole).
+- **Kleiner Zug am Bahnhof**, der bei richtiger Zeit losfährt 🚂💨.
 - **12-Stunden-Uhr ohne AM/PM:** Eine Zielzeit wie `18:00` wird einfach über die
   `6`-Uhr-Stellung eingestellt – die Zeiger-Stellung zählt (Vergleich auf
   12-Stunden-Basis), kein Vormittag/Nachmittag-Schalter nötig.
@@ -75,5 +77,6 @@ State-Verwaltung sind im Quellcode ausführlich auf Deutsch kommentiert.
 Häufige Anpassungen sind im Code zentral möglich:
 
 - **Farben:** CSS-Variablen ganz oben in `style.css` (`:root { ... }`).
-- **Schwierigkeit/Schrittweiten:** `LEVEL_CONFIG` in `game.js`.
+- **Schwierigkeit (Ziel-Raster je Stufe):** `LEVEL_CONFIG` in `game.js`.
+- **Raster des Minutenzeigers:** Konstante `MINUTEN_RASTER` in `game.js` (Standard 5).
 - **Tempo des Levelaufstiegs:** Konstante `AUFSTIEG_NACH` in `game.js`.
